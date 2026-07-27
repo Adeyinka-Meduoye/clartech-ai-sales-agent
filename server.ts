@@ -2,8 +2,8 @@ import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
-import { INITIAL_LEADS } from './src/data/mockLeads';
-import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types';
+import { INITIAL_LEADS } from './src/data/mockLeads.js';
+import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types.js';
 
 dotenv.config();
 
