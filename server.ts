@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 const PORT = 3000;
 
 // In-memory databases
-let leadsDb: Lead[] = [...INITIAL_LEADS];
+let leadsDb: Lead[] = [];
 let agentLogs: AgentLog[] = [
   {
     id: 'log-1',
@@ -89,6 +89,30 @@ function addLog(type: 'info' | 'success' | 'warning' | 'error', message: string)
   console.log(`[AGENT ${type.toUpperCase()}] ${message}`);
 }
 
+// Helper to safely extract and parse JSON from Gemini text response
+function cleanAndParseJson(text: string): any {
+  if (!text) return null;
+  let cleaned = text.trim();
+  // Remove markdown code fences if present
+  cleaned = cleaned.replace(/^```(?:json)?/gi, '').replace(/```$/gi, '').trim();
+  
+  // Find outermost JSON array or object if extra text exists
+  const firstBracket = cleaned.indexOf('[');
+  const firstBrace = cleaned.indexOf('{');
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (lastBracket !== -1) {
+      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+    }
+  } else if (firstBrace !== -1) {
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+  }
+  return JSON.parse(cleaned);
+}
+
 // Multi-tiered Gemini fallback runner
 async function callGeminiWithFallback(params: {
   contents: any;
@@ -101,12 +125,16 @@ async function callGeminiWithFallback(params: {
     throw new Error('Gemini API client is not initialized.');
   }
 
-  // Fallback models chain according to system guidelines
-  const primaryModel = params.preferredModel || 'gemini-3.5-flash';
+  // Use valid Gemini models (prefer gemini-2.5-flash)
+  const primaryModel = (params.preferredModel && !params.preferredModel.includes('3.'))
+    ? params.preferredModel
+    : 'gemini-2.5-flash';
+
   const modelsToTry = [
     primaryModel,
-    'gemini-3.1-flash-lite',
-    'gemini-2.5-flash'
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
   ];
 
   const uniqueModels = Array.from(new Set(modelsToTry));
@@ -150,8 +178,7 @@ async function callGeminiWithFallback(params: {
         }
       } catch (err: any) {
         lastError = err;
-        // Quietly log retry info without dumping raw 429 error strings
-        console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'grounded' : 'standard'}) unavailable, trying next option...`);
+        console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'grounded' : 'standard'}) unavailable:`, err.message || err);
       }
     }
   }
@@ -230,28 +257,12 @@ app.post('/api/agent/analyze/:id', async (req, res) => {
       
       lead.status = 'Researching';
 
-      // 1. Visit Target Website homepage
       addLog('info', `[Browser Engine] Initializing headless sandbox to visit homepage: ${lead.website || 'N/A'}`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 2. Visit About Page
       addLog('info', `[Web Crawler] Navigating to About Page... Found corporate mission and team structure.`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 3. Visit Careers Page
       addLog('info', `[Web Crawler] Visiting Careers Page... Scanning active listings to detect scaling pains.`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 4. Visit Blog and News
       addLog('info', `[Web Crawler] Indexing corporate Blog & News press releases for recent priority announcements.`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 5. Visit LinkedIn Profile
       addLog('info', `[Social Integrator] Navigating to LinkedIn corporate profile: mapping employee growth vector...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       addLog('info', `[Deep Architect] Synthesizing all 6 source matrices (Website, About, Careers, Blog, News, LinkedIn)...`);
-      await new Promise(resolve => setTimeout(resolve, 500));
       
       const prompt = `Conduct an in-depth AI and product automation analysis for the company: "${lead.companyName}" (${lead.website || 'N/A'}).
 Their industry is: ${lead.industry} and they are located in: ${lead.country}.
@@ -298,7 +309,7 @@ Format the output strictly as a single JSON object with these properties:
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-3.5-flash',
+            preferredModel: 'gemini-2.5-flash',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -307,8 +318,7 @@ Format the output strictly as a single JSON object with these properties:
           });
 
           if (response && response.text) {
-            const cleanedText = response.text.replace(/```json/gi, '').replace(/```/g, '').trim();
-            analysisResult = JSON.parse(cleanedText);
+            analysisResult = cleanAndParseJson(response.text);
             addLog('success', `Deep research and analysis successfully completed for ${lead.companyName}.`);
           }
         } catch (err: any) {
@@ -316,89 +326,39 @@ Format the output strictly as a single JSON object with these properties:
         }
       }
 
-      // Fallback or process
+      // Handle research result
       if (!analysisResult) {
-        addLog('warning', `Falling back to advanced deterministic profile generator for ${lead.companyName}...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        analysisResult = {
-          executiveSummary: `${lead.companyName} requires a robust integration of cloud-based scheduling and internal workflow tooling. Their current processes rely heavily on administrative handoffs.`,
-          companyOverview: `${lead.companyName} is an expanding player in the ${lead.industry} space, catering to B2B and consumer client segments with an estimated team size of ${lead.employeeCount} employees.`,
-          estimatedGrowthStage: 'Expanding SME',
-          businessChallenges: [
-            'Administrative lag in dispatching customer approvals and contract signing.',
-            'Fragmented communication between operational managers and customer service specialists.',
-            'No automated logging for customer complaint history.'
-          ],
-          aiOpportunities: [
-            'Deploy private customer triage chatbot using Gemini SDK to answer 60% of basic inquiries.',
-            'Integrate intelligent email parsing to route complaints directly to relevant service units.'
-          ],
-          automationOpportunities: [
-            'Develop a custom React-based client web dashboard.',
-            'Connect operational metrics into a centralized reporting panel, eliminating manual weekly spreadsheets.'
-          ],
-          recommendedClartechServices: [
-            'Custom Web App (Client Relations Portal)',
-            'Intelligent Chatbot Integration',
-            'Automated Data Sync Pipelines'
-          ],
-          estimatedProjectComplexity: 'Medium' as const,
-          estimatedEngagementValue: 35000,
-          confidenceScore: 84,
-          decisionMaker: lead.decisionMaker || 'Alex Carter',
-          jobTitle: lead.jobTitle || 'Head of Operations',
-          techMaturity: 'Medium: Uses standard team communication software and legacy accounting suites, but lacks fully connected operational workflows, leading to manual spreadsheet coordinate-sharing.',
-          buyingSignals: [
-            'Active job postings for operational coordinators and support staff, indicating workforce capacity constraints.',
-            'Growing client base without corresponding growth in digital self-service tools, resulting in ticketing backlogs.'
-          ],
-          emailDraft: `Subject: Accelerating client intake & reducing administrative delay at ${lead.companyName}
-
-Dear ${lead.decisionMaker || 'Alex'},
-
-I was researching ${lead.companyName} and wanted to reach out regarding your current operations.
-
-At Clartech, we work with scaling organizations in the ${lead.industry} space to build custom digital portals and automation pipelines. Based on our analysis, companies of your size often run into friction with administrative handoffs and manual tracking across spreadsheets.
-
-We help teams streamline operations by designing secure customer dashboards and AI assistants that eliminate up to 70% of clerical overhead.
-
-We'd love to offer ${lead.companyName} a complimentary, brief AI & Automation Readiness Assessment.
-
-Would you be open to a 10-minute introduction call next Tuesday at 11 AM to map out some opportunities?
-
-Best regards,
-
-David Miller
-Principal AI Solutions Architect, Clartech
-david@clartech.co`
-        };
+        addLog('warning', `Dynamic analysis could not be generated for ${lead.companyName}. Ensure Gemini API key is configured.`);
+        lead.status = 'Discovered';
+        return;
       }
 
-      lead.decisionMaker = analysisResult.decisionMaker || lead.decisionMaker || 'Executive Leader';
-      lead.jobTitle = analysisResult.jobTitle || lead.jobTitle || 'COO';
-      lead.emailDraft = analysisResult.emailDraft;
-      lead.painPoints = analysisResult.businessChallenges;
-      lead.recommendedServices = analysisResult.recommendedClartechServices;
-      lead.opportunityScore = analysisResult.confidenceScore;
+      lead.decisionMaker = analysisResult.decisionMaker || lead.decisionMaker || '';
+      lead.jobTitle = analysisResult.jobTitle || lead.jobTitle || '';
+      if (analysisResult.emailDraft) lead.emailDraft = analysisResult.emailDraft;
+      if (analysisResult.businessChallenges) lead.painPoints = analysisResult.businessChallenges;
+      if (analysisResult.recommendedClartechServices) lead.recommendedServices = analysisResult.recommendedClartechServices;
+      if (analysisResult.confidenceScore) lead.opportunityScore = analysisResult.confidenceScore;
       
       lead.analysis = {
-        executiveSummary: analysisResult.executiveSummary,
-        companyOverview: analysisResult.companyOverview,
+        executiveSummary: analysisResult.executiveSummary || '',
+        companyOverview: analysisResult.companyOverview || '',
         industry: lead.industry,
-        estimatedGrowthStage: analysisResult.estimatedGrowthStage,
-        businessChallenges: analysisResult.businessChallenges,
-        aiOpportunities: analysisResult.aiOpportunities,
-        automationOpportunities: analysisResult.automationOpportunities,
-        recommendedClartechServices: analysisResult.recommendedClartechServices,
-        estimatedProjectComplexity: analysisResult.estimatedProjectComplexity,
-        estimatedEngagementValue: analysisResult.estimatedEngagementValue,
-        confidenceScore: analysisResult.confidenceScore,
-        techMaturity: analysisResult.techMaturity,
-        buyingSignals: analysisResult.buyingSignals
+        estimatedGrowthStage: analysisResult.estimatedGrowthStage || '',
+        businessChallenges: analysisResult.businessChallenges || [],
+        aiOpportunities: analysisResult.aiOpportunities || [],
+        automationOpportunities: analysisResult.automationOpportunities || [],
+        recommendedClartechServices: analysisResult.recommendedClartechServices || [],
+        estimatedProjectComplexity: analysisResult.estimatedProjectComplexity || 'Medium',
+        estimatedEngagementValue: analysisResult.estimatedEngagementValue || 0,
+        confidenceScore: analysisResult.confidenceScore || 80,
+        techMaturity: analysisResult.techMaturity || '',
+        buyingSignals: analysisResult.buyingSignals || []
       };
 
       lead.status = 'Drafted';
       lead.updatedAt = new Date().toISOString();
+
       
       agentStatus.leadsAnalyzedCount += 1;
       agentStatus.emailsDraftedCount += 1;
@@ -468,7 +428,7 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-3.5-flash',
+            preferredModel: 'gemini-2.5-flash',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -477,9 +437,7 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
           });
 
           if (response && response.text) {
-            const responseText = response.text || '';
-            const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            finderResult = JSON.parse(cleanedText);
+            finderResult = cleanAndParseJson(response.text);
             addLog('success', `Gemini fallback pipeline successfully resolved executive contact for ${lead.companyName}.`);
           }
         } catch (err: any) {
@@ -488,43 +446,25 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
       }
 
       if (!finderResult) {
-        // Fallback names based on industry to make it look super realistic
-        const firstNames = ['Sarah', 'David', 'Elena', 'Michael', 'Rebecca', 'Frank', 'Katarina', 'Jonathan', 'Evelyn', 'Julian', 'Nadia', 'Alex', 'Amanda', 'Robert', 'Marcus', 'Sophia'];
-        const lastNames = ['Jenkins', 'Miller', 'Rostova', 'Chang', 'Vance', 'Sterling', 'Nilsson', 'Blake', 'Brooks', 'Larsson', 'Carter', 'Gomez', 'O\'Connor', 'Alves', 'Takahashi', 'Dubois'];
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const fullName = `${firstName} ${lastName}`;
-        const position = role || 'Chief Operating Officer';
-        const domain = lead.website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0];
-        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
-        const linkedin = `https://www.linkedin.com/in/${firstName.toLowerCase()}-${lastName.toLowerCase()}`;
-        const facebook = `https://www.facebook.com/${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
-        
-        finderResult = {
-          name: fullName,
-          position: position,
-          linkedin: linkedin,
-          facebook: facebook,
-          email: email,
-          emailStatus: 'Estimated via corporate pattern'
-        };
+        addLog('warning', `Could not automatically resolve executive contact for ${lead.companyName} via Gemini.`);
+        return;
       }
 
       // Update the database record
-      lead.decisionMaker = finderResult.name || lead.decisionMaker || 'Sarah Jenkins';
-      lead.jobTitle = finderResult.position || lead.jobTitle || role || 'COO';
+      lead.decisionMaker = finderResult.name || lead.decisionMaker || '';
+      lead.jobTitle = finderResult.position || lead.jobTitle || role || '';
       lead.contactDetails = {
         ...lead.contactDetails,
-        email: finderResult.email || lead.contactDetails.email,
-        linkedin: finderResult.linkedin || lead.contactDetails.linkedin,
-        facebook: finderResult.facebook
+        email: finderResult.email || lead.contactDetails?.email,
+        linkedin: finderResult.linkedin || lead.contactDetails?.linkedin,
+        facebook: finderResult.facebook || lead.contactDetails?.facebook
       };
-      lead.linkedin = finderResult.linkedin || lead.linkedin;
-      lead.facebook = finderResult.facebook || lead.facebook;
+      if (finderResult.linkedin) lead.linkedin = finderResult.linkedin;
+      if (finderResult.facebook) lead.facebook = finderResult.facebook;
       lead.updatedAt = new Date().toISOString();
 
       // Overwrite the first name in the email draft if present to keep it fully aligned
-      if (lead.emailDraft) {
+      if (lead.emailDraft && lead.decisionMaker) {
         const parts = lead.decisionMaker.split(' ');
         const fName = parts[0];
         lead.emailDraft = lead.emailDraft
@@ -532,8 +472,11 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
           .replace(/Hi [A-Za-z]+,/, `Hi ${fName},`);
       }
 
-      addLog('success', `Agent 3: Decision Maker resolved! Identified ${lead.decisionMaker} (${lead.jobTitle}) at ${lead.companyName}.`);
-      addLog('success', `Ethical email resolved: ${lead.contactDetails.email} (${finderResult.emailStatus}). Compliance verified.`);
+      addLog('success', `Decision Maker resolved! Identified ${lead.decisionMaker} (${lead.jobTitle}) at ${lead.companyName}.`);
+      if (lead.contactDetails?.email) {
+        addLog('success', `Email resolved: ${lead.contactDetails.email}.`);
+      }
+
     } catch (err: any) {
       addLog('error', `Decision Finder failed for lead ${lead.companyName}: ${err.message || err}`);
     } finally {
@@ -628,7 +571,7 @@ Respond STRICTLY with a single JSON object matching this schema:
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-3.5-flash',
+            preferredModel: 'gemini-2.5-flash',
             useSearchGrounding: false,
             config: {
               responseMimeType: 'application/json'
@@ -637,9 +580,7 @@ Respond STRICTLY with a single JSON object matching this schema:
           });
 
           if (response && response.text) {
-            const responseText = response.text || '';
-            const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            draftResult = JSON.parse(cleanedText);
+            draftResult = cleanAndParseJson(response.text);
             addLog('success', `B2B email copy drafted successfully using Gemini.`);
           }
         } catch (err: any) {
@@ -648,47 +589,8 @@ Respond STRICTLY with a single JSON object matching this schema:
       }
 
       if (!draftResult) {
-        // High-fidelity fallback generator incorporating ALL 8 inputs
-        const subject = companyNews && companyNews !== 'N/A'
-          ? `Slightly obsessed with the ${companyNews.toLowerCase().substring(0, 40)}...`
-          : `Website load and scheduling friction at ${lead.companyName}`;
-
-        let body = `Hi ${fName},\n\n`;
-
-        if (websiteObservations && websiteObservations !== 'N/A') {
-          body += `Was poking around ${lead.website.replace('https://', '').replace('http://', '')} and noticed ${websiteObservations.toLowerCase()}. `;
-        } else {
-          body += `Was doing some deep research into ${lead.companyName} and their operations inside the ${industry || lead.industry} space. `;
-        }
-
-        if (companyNews && companyNews !== 'N/A') {
-          body += `Huge congrats on: "${companyNews}". That's a major milestone, especially for an organization at your ${growthStage || 'current scaling'} phase. `;
-        }
-
-        if (recentHiring && recentHiring !== 'N/A') {
-          body += `Also saw you're currently hiring for "${recentHiring}". Usually, scaling a team like that with your ${recentFunding || 'current capital setup'} means operational overhead is growing exponentially. `;
-        }
-
-        const resolvedPain = (painPoints && painPoints.length > 0) ? painPoints[0] : (lead.painPoints[0] || 'manual spreadsheet overhead');
-        body += `Usually, teams in your space get bogged down with ${resolvedPain.toLowerCase()}.\n\n`;
-
-        body += `We build custom web portals and intelligent Gemini-powered client ingestion layers that hook directly into team workflows. For a company at your stage, this typically frees up 15+ hours per coordinator every week by automating those slow back-and-forths.\n\n`;
-
-        if (technology && technology !== 'N/A') {
-          body += `Given that your stack is currently leveraging ${technology}, inserting a dedicated middleware handler would be pretty straightforward.\n\n`;
-        }
-
-        body += `Worth a 45-second reply to see if we can streamline this for your team?\n\n`;
-        body += `Adeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech`;
-
-        if (gdprAudit || canSpamAudit) {
-          body += `\n\n---\n*Compliance Audit: Sent under GDPR legitimate interest or CAN-SPAM rules. To opt-out of future updates, reply with 'Unsubscribe'.*`;
-        }
-
-        draftResult = {
-          subject,
-          body
-        };
+        addLog('warning', `Could not draft personalized email for ${lead.companyName} via Gemini.`);
+        return;
       }
 
       // Update the lead record
@@ -696,6 +598,7 @@ Respond STRICTLY with a single JSON object matching this schema:
       lead.emailDraft = fullDraft;
       lead.status = 'Drafted';
       lead.updatedAt = new Date().toISOString();
+
 
       // Save additional signals on the lead's analysis object for reference
       if (lead.analysis) {
@@ -786,7 +689,7 @@ Output strictly as a JSON object with this schema:
         try {
           const response = await callGeminiWithFallback({
             contents: crmPrompt,
-            preferredModel: 'gemini-3.5-flash',
+            preferredModel: 'gemini-2.5-flash',
             useSearchGrounding: false,
             config: {
               responseMimeType: 'application/json'
@@ -795,10 +698,12 @@ Output strictly as a JSON object with this schema:
           });
 
           if (response && response.text) {
-            const data = JSON.parse(response.text.trim());
-            generatedNotes = data.crmNotes || generatedNotes;
-            simulatedReply = data.simulatedReply || '';
-            lead.followUpDate = data.suggestedFollowUp || defaultFollowUp;
+            const data = cleanAndParseJson(response.text);
+            if (data) {
+              generatedNotes = data.crmNotes || generatedNotes;
+              simulatedReply = data.simulatedReply || '';
+              lead.followUpDate = data.suggestedFollowUp || defaultFollowUp;
+            }
           }
         } catch (geminiErr: any) {
           addLog('info', `Gemini CRM lookup using offline fallback rules.`);
@@ -886,7 +791,7 @@ app.post('/api/agent/discover', (req, res) => {
       let discoveredLeads: any[] = [];
 
       if (ai) {
-        addLog('info', `Invoking Gemini 3.5-flash Search Grounding to find real entities...`);
+        addLog('info', `Invoking Gemini Search Grounding to find real entities...`);
         const discoveryPrompt = `Find 3 real active businesses/studios/nonprofits/churches located in ${region} that belong to the "${industry}" sector, with approximately ${minSize} to ${maxSize} employees.
 The businesses should represent excellent potential clients for "Clartech", which is an AI and custom product development studio. Look for targets that could benefit from:
 - AI assistants / custom chatbots
@@ -941,7 +846,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
         try {
           const response = await callGeminiWithFallback({
             contents: discoveryPrompt,
-            preferredModel: 'gemini-3.5-flash',
+            preferredModel: 'gemini-2.5-flash',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -950,7 +855,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
           });
 
           if (response && response.text) {
-            discoveredLeads = JSON.parse(response.text.trim());
+            discoveredLeads = cleanAndParseJson(response.text) || [];
             addLog('success', `Gemini returned ${discoveredLeads.length} real grounded candidates.`);
           }
         } catch (geminiErr: any) {
@@ -958,143 +863,41 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
         }
       }
 
-      // Fallback generator if search grounded call failed or no API key is set
-      if (discoveredLeads.length === 0) {
-        addLog('warning', `Falling back to highly-optimized local B2B lead builder...`);
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Generate realistic sector-specific companies
-        const candidateTemplates = ({
-          SaaS: [
-            { companyName: 'CloudPulse Technologies', website: 'https://cloudpulse.example.io', size: 34, leader: 'David Chen', title: 'Founder & CTO' },
-            { companyName: 'ScribeFlow Document AI', website: 'https://scribeflow.example.com', size: 85, leader: 'Elena Rostova', title: 'CEO' }
-          ],
-          Healthcare: [
-            { companyName: 'Toronto Clinic Partners', website: 'https://torontoclinic.example.ca', size: 55, leader: 'Dr. Michael Chang', title: 'Medical Director' },
-            { companyName: 'LifeSync Orthodontics', website: 'https://lifesync.example.com', size: 18, leader: 'Rebecca Vance', title: 'Operations Manager' }
-          ],
-          Logistics: [
-            { companyName: 'Global Cargo Hub', website: 'https://cargo-hub.example.net', size: 210, leader: 'Frank Sterling', title: 'Director of Logistics' },
-            { companyName: 'SwiftRoute Delivery', website: 'https://swiftroute.example.com', size: 45, leader: 'Katarina Nilsson', title: 'Operations Lead' }
-          ],
-          Churches: [
-            { companyName: 'Trinity Hope Cathedral', website: 'https://trinityhope.example.org', size: 12, leader: 'Pastor Jonathan Blake', title: 'Lead Pastor' },
-            { companyName: 'All Saints Family Church', website: 'https://allsaints.example.org', size: 8, leader: 'Evelyn Brooks', title: 'Office Administrator' }
-          ]
-        } as any)[industry] || [
-          { companyName: 'Vanguard Professional Services', website: 'https://vanguard-pro.example.com', size: 48, leader: 'Julian Sterling', title: 'Managing Director' },
-          { companyName: 'InnoCorp Solutions', website: 'https://innocorp.example.com', size: 120, leader: 'Nadia Larsson', title: 'Head of Innovation' }
-        ];
-
-        discoveredLeads = candidateTemplates.map((candidate: any, index: number) => {
-          const size = candidate.size || Math.floor(Math.random() * 100) + 10;
-          const score = Math.floor(Math.random() * 15) + 80; // 80-95
-          const value = Math.floor(Math.random() * 40000) + 20000; // 20k - 60k
-          
-          return {
-            companyName: candidate.companyName,
-            website: candidate.website,
-            linkedin: `https://www.linkedin.com/company/${candidate.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-            facebook: `https://www.facebook.com/${candidate.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-            industry: industry,
-            country: region,
-            employeeCount: size,
-            decisionMaker: candidate.leader,
-            jobTitle: candidate.title || role,
-            contactDetails: {
-              email: `${candidate.leader.toLowerCase().replace(' ', '.')}@${candidate.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.example.com`,
-              phone: `+1 (555) 012-384${index}`
-            },
-            painPoints: [
-              'Heavy dependency on fragmented spreadsheets and manual updates',
-              'Siloed staff operations slowing down onboarding and reporting workflows',
-              'No modern client dashboard/portal causing support ticket backlogs'
-            ],
-            opportunityScore: score,
-            recommendedServices: [
-              `Custom CRM & Operations Dashboard`,
-              `Automated Messaging pipeline`,
-              `AI-Powered Intake Copilot`
-            ],
-            emailDraft: `Subject: Accelerating project deliveries and client coordination at ${candidate.companyName}
-
-Hi ${candidate.leader.split(' ')[0]},
-
-I hope this message finds you well.
-
-I came across ${candidate.companyName} while reviewing fast-growing firms in the ${industry} space in ${region}. It looks like your team is doing outstanding work, especially as you scale operations to ${size} staff members.
-
-At Clartech, we build high-performance custom web applications and AI agents for companies looking to eliminate spreadsheet bottlenecks and manual work. We typically partner with teams to:
-1. Replace slow, disconnected administrative steps with a single custom client hub.
-2. Embed lightweight AI agents that draft rapid customer support and billing replies automatically.
-
-We'd love to offer ${candidate.companyName} a complimentary AI & Automation Assessment to map out where your team can save 12+ hours per week per coordinator.
-
-Would you be open to a 10-minute discovery call next Wednesday at 10 AM?
-
-Adeyinka Meduoye,
-Principal AI Solutions Architect,
-Clartech`,
-            analysis: {
-              executiveSummary: `${candidate.companyName} is in prime position to automate operational workflows and deploy a customized customer portal, replacing manual administrative spreadsheet steps.`,
-              companyOverview: `${candidate.companyName} is a recognized supplier of specialized services inside the ${industry} sector, serving regional and international accounts.`,
-              industry: industry,
-              estimatedGrowthStage: 'Scaling SME',
-              businessChallenges: [
-                'Manual transcription of registration information into multiple legacy trackers.',
-                'Customer complaints regarding response times for general support tickets.',
-                'High clerical overhead in invoice checking and volunteer/staff scheduling.'
-              ],
-              aiOpportunities: [
-                'Incorporate private Gemini AI agent to analyze inbound documents and auto-extract crucial metadata.',
-                'Create internal customer service copilot to instantly search internal company wikis and draft support responses.'
-              ],
-              automationOpportunities: [
-                'Consolidate internal pipelines onto a custom React Web Portal.',
-                'Integrate automated email / text follow-ups triggered by status changes.'
-              ],
-              recommendedClartechServices: [
-                'Custom Client Portal & Workflow CRM',
-                'AI-Powered Intake Summarizer',
-                'Slack & Email Automation Pipelines'
-              ],
-              estimatedProjectComplexity: 'Medium' as const,
-              estimatedEngagementValue: value,
-              confidenceScore: score
-            }
+      // Handle discovered leads
+      if (!Array.isArray(discoveredLeads) || discoveredLeads.length === 0) {
+        addLog('info', `No prospect candidates found for ${industry} in ${region}. Try expanding or adjusting search criteria.`);
+      } else {
+        // Add discovered leads to CRM immediately
+        for (const item of discoveredLeads) {
+          if (!item.companyName) continue;
+          const lead: Lead = {
+            id: `lead-${Math.random().toString(36).substr(2, 9)}`,
+            companyName: item.companyName,
+            website: item.website || '',
+            industry: item.industry || industry,
+            country: item.country || region,
+            employeeCount: item.employeeCount || 0,
+            decisionMaker: item.decisionMaker || '',
+            jobTitle: item.jobTitle || role || '',
+            contactDetails: item.contactDetails || {},
+            painPoints: item.painPoints || [],
+            opportunityScore: item.opportunityScore || 80,
+            recommendedServices: item.recommendedServices || [],
+            emailDraft: item.emailDraft || '',
+            linkedin: item.linkedin || '',
+            facebook: item.facebook || '',
+            followUpDate: new Date(Date.now() + 7 * 24 * 3600000).toISOString().split('T')[0],
+            status: 'Discovered',
+            analysis: item.analysis,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           };
-        });
+          leadsDb.unshift(lead);
+          agentStatus.leadsDiscoveredCount += 1;
+          addLog('success', `Found qualified prospect: ${lead.companyName} (${lead.opportunityScore}% ICP match). Research stored.`);
+        }
       }
 
-      // Add discovered leads to CRM
-      for (const item of discoveredLeads) {
-        const lead: Lead = {
-          id: `lead-${Math.random().toString(36).substr(2, 9)}`,
-          companyName: item.companyName,
-          website: item.website,
-          industry: item.industry,
-          country: item.country,
-          employeeCount: item.employeeCount,
-          decisionMaker: item.decisionMaker,
-          jobTitle: item.jobTitle,
-          contactDetails: item.contactDetails || {},
-          painPoints: item.painPoints || [],
-          opportunityScore: item.opportunityScore || 80,
-          recommendedServices: item.recommendedServices || [],
-          emailDraft: item.emailDraft || '',
-          linkedin: item.linkedin || `https://www.linkedin.com/company/${item.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-          facebook: item.facebook || `https://www.facebook.com/${item.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-          followUpDate: new Date(Date.now() + 7 * 24 * 3600000).toISOString().split('T')[0], // 1 week follow-up
-          status: 'Discovered',
-          analysis: item.analysis,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        leadsDb.unshift(lead);
-        agentStatus.leadsDiscoveredCount += 1;
-        addLog('success', `Found qualified prospect: ${lead.companyName} (${lead.opportunityScore}% ICP match). Research stored.`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
 
       agentStatus.status = 'idle';
       agentStatus.currentTask = undefined;
