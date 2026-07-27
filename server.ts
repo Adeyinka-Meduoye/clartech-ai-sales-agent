@@ -21,6 +21,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Normalize Vercel rewritten URLs so /api/... routes always match when deployed on Vercel
+app.use((req, res, next) => {
+  if (process.env.VERCEL) {
+    if (req.url && !req.url.startsWith('/api/') && req.url !== '/api') {
+      req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
+    }
+  }
+  next();
+});
+
 const PORT = 3000;
 
 // In-memory databases
@@ -1097,16 +1107,29 @@ Clartech`,
   })();
 });
 
+// Global Error Handler for Express routes
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[API Error]:', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
+});
+
 // Serve frontend with Vite middleware
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-    console.log('Vite development middleware integrated.');
+  if (process.env.VERCEL) {
+    return;
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      console.log('Vite development middleware integrated.');
+    } catch (err) {
+      console.warn('Vite dev middleware skipped:', err);
+    }
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
