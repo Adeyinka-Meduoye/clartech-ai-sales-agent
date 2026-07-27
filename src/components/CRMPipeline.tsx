@@ -99,23 +99,23 @@ export default function CRMPipeline({
   };
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-xl p-6" id="crm-pipeline-root">
+    <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-xl p-4 sm:p-6" id="crm-pipeline-root">
       {/* CRM Actions & Filters bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 tracking-tight">Sales Pipeline & CRM</h2>
-          <p className="text-xs text-slate-400 mt-1">Review opportunities, customize personalized emails, and advance outreach statuses.</p>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight">Sales Pipeline & CRM</h2>
+          <p className="text-xs text-slate-400 mt-0.5 sm:mt-1">Review opportunities, customize personalized emails, and advance outreach statuses.</p>
         </div>
         <button
           onClick={onOpenCreateModal}
-          className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 transition self-start cursor-pointer text-sm"
+          className="bg-brand-500 hover:bg-brand-600 text-white font-medium px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-lg flex items-center justify-center gap-2 transition self-stretch sm:self-start cursor-pointer text-xs sm:text-sm shrink-0"
         >
           <Plus className="w-4 h-4" /> Add Custom Prospect
         </button>
       </div>
 
       {/* Advanced Filters panel */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
           <input
@@ -123,7 +123,7 @@ export default function CRMPipeline({
             placeholder="Search company, URL, contact..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2.5 text-xs sm:text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-brand-500 transition"
           />
         </div>
 
@@ -131,7 +131,7 @@ export default function CRMPipeline({
           <select
             value={selectedCountry}
             onChange={(e) => setSelectedCountry(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-brand-500 transition"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-brand-500 transition"
           >
             {COUNTRIES.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -143,7 +143,7 @@ export default function CRMPipeline({
           <select
             value={selectedIndustry}
             onChange={(e) => setSelectedIndustry(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-brand-500 transition"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-brand-500 transition"
           >
             {INDUSTRIES.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
@@ -151,8 +151,8 @@ export default function CRMPipeline({
           </select>
         </div>
 
-        <div className="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-xs">
-          <TrendingUp className="w-4 h-4 text-slate-500" />
+        <div className="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs">
+          <TrendingUp className="w-4 h-4 text-slate-500 shrink-0" />
           <div className="flex-1">
             <div className="flex justify-between text-slate-400 text-[10px] uppercase font-mono mb-0.5">
               <span>ICP Match Min</span>

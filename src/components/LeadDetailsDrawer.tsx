@@ -116,9 +116,9 @@ export default function LeadDetailsDrawer({
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Slideout Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-2xl w-full bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl h-full">
+      <div className="absolute inset-y-0 right-0 w-full sm:max-w-2xl bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl h-full">
         {/* Header */}
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/60 backdrop-blur-md shrink-0">
+        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/60 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center font-bold text-brand-400 text-lg uppercase select-none">
               {lead.companyName.charAt(0)}
