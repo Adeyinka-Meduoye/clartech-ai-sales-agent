@@ -53,12 +53,12 @@ export default function CreateLeadModal({ onClose, onSave }: CreateLeadModalProp
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Box */}
-      <div className="relative bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full shadow-2xl p-6 overflow-hidden">
+      <div className="relative bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl p-4 sm:p-6 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3 sm:pb-4 mb-4 sm:mb-5 shrink-0">
           <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-brand-500" />
-            <h3 className="font-bold text-slate-100 text-lg tracking-tight">Add New Prospect</h3>
+            <Building2 className="w-5 h-5 text-brand-500 shrink-0" />
+            <h3 className="font-bold text-slate-100 text-base sm:text-lg tracking-tight">Add New Prospect</h3>
           </div>
           <button 
             onClick={onClose} 
@@ -69,7 +69,7 @@ export default function CreateLeadModal({ onClose, onSave }: CreateLeadModalProp
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 flex-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-mono uppercase tracking-wider">Company Name *</label>

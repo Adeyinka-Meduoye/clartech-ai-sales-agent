@@ -1,15 +1,25 @@
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
-import { INITIAL_LEADS } from './src/data/mockLeads.js';
-import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types.js';
+import { INITIAL_LEADS } from './src/data/mockLeads';
+import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types';
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// Enable CORS for cross-origin requests and Vercel hosting
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 const PORT = 3000;
 
@@ -1089,7 +1099,8 @@ Clartech`,
 
 // Serve frontend with Vite middleware
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

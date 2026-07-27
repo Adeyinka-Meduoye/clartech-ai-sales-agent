@@ -42,6 +42,7 @@ export default function App() {
   const fetchLeads = async () => {
     try {
       const res = await fetch('/api/leads');
+      if (!res.ok) return;
       const data = await res.json();
       setLeads(data);
     } catch (err) {
@@ -54,6 +55,7 @@ export default function App() {
   const fetchAgentStatus = async () => {
     try {
       const res = await fetch('/api/agent/status');
+      if (!res.ok) return;
       const data = await res.json();
       setAgentStatus(data);
     } catch (err) {
@@ -64,6 +66,7 @@ export default function App() {
   const fetchAgentLogs = async () => {
     try {
       const res = await fetch('/api/agent/logs');
+      if (!res.ok) return;
       const data = await res.json();
       setAgentLogs(data);
     } catch (err) {
