@@ -1,0 +1,8 @@
+{
+  "name": "Clartech AI Sales Agent",
+  "description": "Enterprise-grade autonomous sales discovery and intelligence CRM agent for Clartech.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
