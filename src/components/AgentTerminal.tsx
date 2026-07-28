@@ -157,10 +157,14 @@ export default function AgentTerminal({
 
   const currentSelectedLead = leads.find(l => l.id === selectedLeadId) || leads[0];
 
-  // Auto scroll logs
+  // Auto scroll logs only when a new log arrives
+  const lastLogId = logs.length > 0 ? logs[logs.length - 1].id : '';
+
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+    if (lastLogId) {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [lastLogId]);
 
   // Sync fields when selected lead changes
   useEffect(() => {

@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 const PORT = 3000;
 
 // In-memory databases
-let leadsDb: Lead[] = [];
+let leadsDb: Lead[] = [...INITIAL_LEADS];
 let agentLogs: AgentLog[] = [
   {
     id: 'log-1',
@@ -82,9 +82,9 @@ function addLog(type: 'info' | 'success' | 'warning' | 'error', message: string)
     type,
     message
   };
-  agentLogs.unshift(log);
+  agentLogs.push(log);
   if (agentLogs.length > 100) {
-    agentLogs.pop();
+    agentLogs.shift();
   }
   console.log(`[AGENT ${type.toUpperCase()}] ${message}`);
 }
