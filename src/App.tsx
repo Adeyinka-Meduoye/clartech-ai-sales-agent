@@ -102,14 +102,19 @@ export default function App() {
   // Operations
   const handleTriggerDiscovery = async (config: ICPConfig) => {
     try {
+      const rawSize = config.companySizes[0] || '10-100';
+      const sizeParts = rawSize.split('-');
+      const minSize = sizeParts[0] || '10';
+      const maxSize = sizeParts[1] || '100';
+
       await fetch('/api/agent/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           industry: config.industries[0],
           region: config.regions[0],
-          minSize: config.companySizes[0].split('-')[0],
-          maxSize: config.companySizes[0].split('-')[1],
+          minSize,
+          maxSize,
           role: config.decisionMakers[0]
         })
       });

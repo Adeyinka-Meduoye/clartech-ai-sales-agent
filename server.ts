@@ -92,25 +92,30 @@ function addLog(type: 'info' | 'success' | 'warning' | 'error', message: string)
 // Helper to safely extract and parse JSON from Gemini text response
 function cleanAndParseJson(text: string): any {
   if (!text) return null;
-  let cleaned = text.trim();
-  // Remove markdown code fences if present
-  cleaned = cleaned.replace(/^```(?:json)?/gi, '').replace(/```$/gi, '').trim();
-  
-  // Find outermost JSON array or object if extra text exists
-  const firstBracket = cleaned.indexOf('[');
-  const firstBrace = cleaned.indexOf('{');
-  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
-    const lastBracket = cleaned.lastIndexOf(']');
-    if (lastBracket !== -1) {
-      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+  try {
+    let cleaned = text.trim();
+    // Remove markdown code fences if present
+    cleaned = cleaned.replace(/^```(?:json)?/gi, '').replace(/```$/gi, '').trim();
+    
+    // Find outermost JSON array or object if extra text exists
+    const firstBracket = cleaned.indexOf('[');
+    const firstBrace = cleaned.indexOf('{');
+    if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+      const lastBracket = cleaned.lastIndexOf(']');
+      if (lastBracket !== -1) {
+        cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+      }
+    } else if (firstBrace !== -1) {
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (lastBrace !== -1) {
+        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+      }
     }
-  } else if (firstBrace !== -1) {
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (lastBrace !== -1) {
-      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-    }
+    return JSON.parse(cleaned);
+  } catch (err: any) {
+    console.error('[JSON Parser] Failed to parse Gemini response as JSON:', err?.message || err);
+    return null;
   }
-  return JSON.parse(cleaned);
 }
 
 // Multi-tiered Gemini fallback runner
@@ -125,60 +130,70 @@ async function callGeminiWithFallback(params: {
     throw new Error('Gemini API client is not initialized.');
   }
 
-  // Use valid Gemini models (prefer gemini-2.5-flash)
-  const primaryModel = (params.preferredModel && !params.preferredModel.includes('3.'))
+  const primaryModel = (params.preferredModel && !params.preferredModel.includes('1.5') && !params.preferredModel.includes('2.5'))
     ? params.preferredModel
-    : 'gemini-2.5-flash';
+    : 'gemini-3-flash-preview';
 
-  const modelsToTry = [
+  const modelsToTry = Array.from(new Set([
     primaryModel,
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash'
-  ];
+    'gemini-3-flash-preview',
+    'gemini-2.0-flash'
+  ]));
 
-  const uniqueModels = Array.from(new Set(modelsToTry));
   let lastError: any = null;
 
-  for (const model of uniqueModels) {
+  for (const model of modelsToTry) {
     const attempts = params.useSearchGrounding
       ? [{ useGrounding: true }, { useGrounding: false }]
       : [{ useGrounding: false }];
 
     for (const attempt of attempts) {
-      try {
-        const activeConfig: any = { ...(params.config || {}) };
-        
-        if (params.systemInstruction) {
-          activeConfig.systemInstruction = params.systemInstruction;
-        }
+      // For grounding attempts, try once and immediately fall back if quota fails
+      const maxRetries = attempt.useGrounding ? 1 : 2;
+      for (let retry = 0; retry < maxRetries; retry++) {
+        try {
+          const activeConfig: any = { ...(params.config || {}) };
+          
+          if (params.systemInstruction) {
+            activeConfig.systemInstruction = params.systemInstruction;
+          }
 
-        if (attempt.useGrounding) {
-          activeConfig.tools = [{ googleSearch: {} }];
-        } else {
-          if (activeConfig.tools) {
-            activeConfig.tools = activeConfig.tools.filter((t: any) => !t.googleSearch);
-            if (activeConfig.tools.length === 0) {
-              delete activeConfig.tools;
+          if (attempt.useGrounding) {
+            activeConfig.tools = [{ googleSearch: {} }];
+            delete activeConfig.responseMimeType;
+          } else {
+            if (activeConfig.tools) {
+              activeConfig.tools = activeConfig.tools.filter((t: any) => !t.googleSearch);
+              if (activeConfig.tools.length === 0) {
+                delete activeConfig.tools;
+              }
+            }
+            if (params.config && params.config.responseMimeType) {
+              activeConfig.responseMimeType = params.config.responseMimeType;
             }
           }
+
+          console.log(`[Gemini Engine] Querying model "${model}" (${attempt.useGrounding ? 'Search Grounded' : 'standard text'}, retry ${retry})...`);
+
+          const response = await ai.models.generateContent({
+            model: model,
+            contents: params.contents,
+            config: activeConfig
+          });
+
+          if (response && response.text) {
+            console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'Search Grounded' : 'standard text'}) succeeded.`);
+            return response;
+          }
+        } catch (err: any) {
+          lastError = err;
+          console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'grounded' : 'standard'}) error:`, err.message || err);
+          if (!attempt.useGrounding && (err.status === 429 || (err.message && err.message.includes('429')))) {
+            await new Promise(r => setTimeout(r, 1500));
+          } else {
+            break; // Immediately move to next attempt
+          }
         }
-
-        console.log(`[Gemini Engine] Querying model "${model}" (${attempt.useGrounding ? 'Google Search grounded' : 'standard text'})...`);
-
-        const response = await ai.models.generateContent({
-          model: model,
-          contents: params.contents,
-          config: activeConfig
-        });
-
-        if (response && response.text) {
-          console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'Search Grounding' : 'standard text'}) succeeded.`);
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.log(`[Gemini Engine] Model "${model}" (${attempt.useGrounding ? 'grounded' : 'standard'}) unavailable:`, err.message || err);
       }
     }
   }
@@ -309,7 +324,7 @@ Format the output strictly as a single JSON object with these properties:
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-2.5-flash',
+            preferredModel: 'gemini-3-flash-preview',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -428,7 +443,7 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-2.5-flash',
+            preferredModel: 'gemini-3-flash-preview',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -571,7 +586,7 @@ Respond STRICTLY with a single JSON object matching this schema:
         try {
           const response = await callGeminiWithFallback({
             contents: prompt,
-            preferredModel: 'gemini-2.5-flash',
+            preferredModel: 'gemini-3-flash-preview',
             useSearchGrounding: false,
             config: {
               responseMimeType: 'application/json'
@@ -689,7 +704,7 @@ Output strictly as a JSON object with this schema:
         try {
           const response = await callGeminiWithFallback({
             contents: crmPrompt,
-            preferredModel: 'gemini-2.5-flash',
+            preferredModel: 'gemini-3-flash-preview',
             useSearchGrounding: false,
             config: {
               responseMimeType: 'application/json'
@@ -846,7 +861,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
         try {
           const response = await callGeminiWithFallback({
             contents: discoveryPrompt,
-            preferredModel: 'gemini-2.5-flash',
+            preferredModel: 'gemini-3-flash-preview',
             useSearchGrounding: true,
             config: {
               responseMimeType: 'application/json'
@@ -904,6 +919,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
       addLog('success', `Autonomous scanning cycle complete. Processed ${discoveredLeads.length} new prospects successfully.`);
     } catch (err: any) {
       addLog('error', `Autonomous agent scan failed: ${err.message || err}`);
+    } finally {
       agentStatus.status = 'idle';
       agentStatus.currentTask = undefined;
     }
