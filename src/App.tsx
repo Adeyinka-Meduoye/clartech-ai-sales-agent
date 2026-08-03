@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import clartechLogo from './assets/images/clartech_company_logo_1785172701052.jpg';
 import { 
@@ -37,14 +37,35 @@ export default function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isAnalysingId, setIsAnalysingId] = useState<string | undefined>(undefined);
   const [loadingLeads, setLoadingLeads] = useState(true);
+  const deletedLeadIdsRef = useRef<Set<string>>(new Set());
 
   // Fetch leads and agent data from Express API
   const fetchLeads = async () => {
     try {
-      const res = await fetch('/api/leads');
+      const res = await fetch('/api/leads', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
-      setLeads(data);
+      if (Array.isArray(data)) {
+        setLeads(prevLeads => {
+          // Prevent empty array responses from cold serverless containers from wiping out existing leads
+          if (data.length === 0 && prevLeads.length > 0) {
+            return prevLeads;
+          }
+          // Merge incoming leads with existing leads by ID to prevent multi-instance flickering
+          const map = new Map<string, Lead>();
+          prevLeads.forEach(item => {
+            if (!deletedLeadIdsRef.current.has(item.id)) {
+              map.set(item.id, item);
+            }
+          });
+          data.forEach(item => {
+            if (!deletedLeadIdsRef.current.has(item.id)) {
+              map.set(item.id, item);
+            }
+          });
+          return Array.from(map.values());
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch leads:', err);
     } finally {
@@ -54,10 +75,19 @@ export default function App() {
 
   const fetchAgentStatus = async () => {
     try {
-      const res = await fetch('/api/agent/status');
+      const res = await fetch('/api/agent/status', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
-      setAgentStatus(data);
+      setAgentStatus(prevStatus => {
+        const keepActive = prevStatus.status === 'analyzing' && data.status === 'idle';
+        return {
+          status: keepActive ? prevStatus.status : (data.status || prevStatus.status),
+          currentTask: keepActive ? prevStatus.currentTask : (data.currentTask || undefined),
+          leadsDiscoveredCount: Math.max(data.leadsDiscoveredCount || 0, prevStatus.leadsDiscoveredCount || 0),
+          leadsAnalyzedCount: Math.max(data.leadsAnalyzedCount || 0, prevStatus.leadsAnalyzedCount || 0),
+          emailsDraftedCount: Math.max(data.emailsDraftedCount || 0, prevStatus.emailsDraftedCount || 0)
+        };
+      });
     } catch (err) {
       console.error('Failed to fetch agent status:', err);
     }
@@ -65,10 +95,20 @@ export default function App() {
 
   const fetchAgentLogs = async () => {
     try {
-      const res = await fetch('/api/agent/logs');
+      const res = await fetch('/api/agent/logs', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
-      setAgentLogs(data);
+      if (Array.isArray(data)) {
+        setAgentLogs(prevLogs => {
+          if (data.length === 0 && prevLogs.length > 0) {
+            return prevLogs;
+          }
+          const map = new Map<string, AgentLog>();
+          prevLogs.forEach(log => map.set(log.id, log));
+          data.forEach(log => map.set(log.id, log));
+          return Array.from(map.values()).slice(-100);
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch agent logs:', err);
     }
@@ -239,12 +279,13 @@ export default function App() {
   const handleDeleteLead = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this lead?')) {
       try {
+        deletedLeadIdsRef.current.add(id);
+        setLeads(prevLeads => prevLeads.filter(l => l.id !== id));
         const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
         if (res.ok) {
           if (selectedLead?.id === id) {
             setSelectedLead(null);
           }
-          fetchLeads();
         }
       } catch (err) {
         console.error('Failed to delete lead:', err);

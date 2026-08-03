@@ -31,6 +31,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Disable ETag generation to prevent 304 Not Modified cache loops on CDN / Vercel Edge
+app.set('etag', false);
+
+// Ensure no-cache headers on all API routes so polling always receives fresh JSON responses
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 const PORT = 3000;
 
 // In-memory databases
