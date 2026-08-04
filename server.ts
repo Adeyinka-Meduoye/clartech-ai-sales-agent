@@ -3,8 +3,8 @@ import path from 'path';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_LEADS } from './src/data/mockLeads.js';
 import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types.js';
@@ -19,28 +19,24 @@ process.on('uncaughtException', (err) => {
 });
 
 let db: Firestore | null = null;
+
 try {
-  let projectId = 'gen-lang-client-0152834880';
-  let databaseId: string | undefined = undefined;
-  try {
-    const configData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
-    if (configData.projectId) projectId = configData.projectId;
-    if (configData.firestoreDatabaseId) databaseId = configData.firestoreDatabaseId;
-  } catch (e) {}
+  const app =
+    getApps().length > 0
+      ? getApps()[0]
+      : initializeApp({
+          credential: cert({
+            projectId: process.env.FIREBASE_PROJECT_ID!,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+          }),
+        });
 
-  const appInstance = !getApps().length ? initializeApp({
-    projectId: projectId
-  }) : getApps()[0];
+  db = getFirestore(app);
 
-  // Try initializing with databaseId if present, else default
-  try {
-    db = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
-  } catch (e) {
-    db = getFirestore(appInstance);
-  }
-  console.log('Firebase Admin Firestore initialized successfully for project:', projectId, 'database:', databaseId || '(default)');
+  console.log("✅ Firebase Admin initialized");
 } catch (err) {
-  console.warn('Firebase Admin initialization warning:', err);
+  console.error("Firebase initialization failed:", err);
 }
 
 const EMAIL_SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech";
