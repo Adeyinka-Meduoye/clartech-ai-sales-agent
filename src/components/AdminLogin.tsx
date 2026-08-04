@@ -115,8 +115,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                 onClick={() => setShowHelp(!showHelp)}
                 className="text-brand-400 hover:underline flex items-center gap-1 text-[10px] lowercase font-mono cursor-pointer"
               >
-                <HelpCircle className="w-3 h-3" /> how to add/delete user?
-              </button>
+               </button>
             </label>
             <div className="relative">
               <select
@@ -133,23 +132,6 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               <div className="absolute right-4 top-3.5 pointer-events-none text-slate-500 text-xs font-mono">▼</div>
             </div>
           </div>
-
-          {showHelp && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl text-xs text-slate-300 space-y-2 font-mono"
-            >
-              <div className="font-bold text-brand-400">How to Add or Delete Usernames:</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                User credentials are securely stored in <code className="text-brand-300 bg-slate-900 px-1 py-0.5 rounded">server.ts</code> (under the <code className="text-brand-300 bg-slate-900 px-1 py-0.5 rounded">teamUsers</code> array):
-              </p>
-              <ul className="list-disc list-inside text-[10px] text-slate-400 space-y-1">
-                <li><strong>To Add:</strong> Add a new object with <code className="text-slate-200">name</code>, <code className="text-slate-200">role</code>, <code className="text-slate-200">password</code>, and <code className="text-slate-200">canDelete</code>.</li>
-                <li><strong>To Delete:</strong> Remove the user's object from the <code className="text-slate-200">teamUsers</code> array.</li>
-              </ul>
-            </motion.div>
-          )}
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
