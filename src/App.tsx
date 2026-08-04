@@ -44,6 +44,7 @@ export default function App() {
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isAnalysingId, setIsAnalysingId] = useState<string | undefined>(undefined);
   const [loadingLeads, setLoadingLeads] = useState(true);
   const deletedLeadIdsRef = useRef<Set<string>>(new Set());
@@ -53,6 +54,8 @@ export default function App() {
     try {
       const res = await fetch('/api/leads', { cache: 'no-store' });
       if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
       const data = await res.json();
       if (Array.isArray(data)) {
         setLeads(prevLeads => {
@@ -76,7 +79,7 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Failed to fetch leads:', err);
+      // Ignore transient network/server restart errors
     } finally {
       setLoadingLeads(false);
     }
@@ -86,6 +89,8 @@ export default function App() {
     try {
       const res = await fetch('/api/agent/status', { cache: 'no-store' });
       if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
       const data = await res.json();
       setAgentStatus(prevStatus => {
         return {
@@ -97,7 +102,7 @@ export default function App() {
         };
       });
     } catch (err) {
-      console.error('Failed to fetch agent status:', err);
+      // Ignore transient network/server restart errors
     }
   };
 
@@ -105,6 +110,8 @@ export default function App() {
     try {
       const res = await fetch('/api/agent/logs', { cache: 'no-store' });
       if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
       const data = await res.json();
       if (Array.isArray(data)) {
         setAgentLogs(prevLogs => {
@@ -118,7 +125,7 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Failed to fetch agent logs:', err);
+      // Ignore transient network/server restart errors
     }
   };
 
@@ -411,10 +418,7 @@ export default function App() {
               <div className="text-[9px] text-slate-500">{currentUser.canDelete ? 'Super Admin' : 'CRM Operator'}</div>
             </div>
             <button
-              onClick={() => {
-                setCurrentUser(null);
-                localStorage.removeItem('clartech_user');
-              }}
+              onClick={() => setShowLogoutModal(true)}
               className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
               title="Logout"
             >
@@ -609,6 +613,42 @@ export default function App() {
           onClose={() => setShowCreateModal(false)}
           onSave={handleCreateManualLead}
         />
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4"
+          >
+            <h3 className="text-lg font-bold text-slate-100">Confirm Logout</h3>
+            <p className="text-xs text-slate-400">
+              Are you sure you want to log out of the Clartech Enterprise Portal? You will need to re-enter your team credentials to access the CRM again.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  setCurrentUser(null);
+                  localStorage.removeItem('clartech_user');
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-medium transition cursor-pointer shadow-lg shadow-rose-600/20"
+              >
+                Confirm Logout
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

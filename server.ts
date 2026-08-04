@@ -11,6 +11,13 @@ import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types.js';
 
 dotenv.config();
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('Unhandled Rejection (caught):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.warn('Uncaught Exception (caught):', err);
+});
+
 let db: Firestore | null = null;
 try {
   let projectId = 'gen-lang-client-0152834880';
@@ -252,27 +259,33 @@ async function callGeminiWithFallback(params: {
   throw lastError || new Error('All fallback models exhausted.');
 }
 
-// Authentication API
+// Authentication API & Team Users Management
+// To add a new username: add a new object to teamUsers array below with name, role, password, and canDelete (boolean).
+// To delete a username: remove its entry from the teamUsers array below.
+const teamUsers = [
+  {
+    name: 'Adeyinka Meduoye',
+    role: 'Principal AI Solutions Architect',
+    password: process.env.ADEYINKA_PASSWORD || 'Clartech2026!SecureAdeyinka#',
+    canDelete: true
+  },
+  {
+    name: 'Gloria Irabor',
+    role: 'Enterprise Sales & CRM Operations',
+    password: process.env.GLORIA_PASSWORD || 'Clartech2026!SecureGloria#',
+    canDelete: false
+  }
+];
+
+app.get('/api/auth/users', (req, res) => {
+  res.json(teamUsers.map(u => ({ name: u.name, role: u.role, canDelete: u.canDelete })));
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
-
-  const teamUsers = [
-    {
-      name: 'Adeyinka Meduoye',
-      role: 'Principal AI Solutions Architect',
-      password: process.env.ADEYINKA_PASSWORD || 'Clartech2026!SecureAdeyinka#',
-      canDelete: true
-    },
-    {
-      name: 'Gloria Irabor',
-      role: 'Enterprise Sales & CRM Operations',
-      password: process.env.GLORIA_PASSWORD || 'Clartech2026!SecureGloria#',
-      canDelete: false
-    }
-  ];
 
   const matchedUser = teamUsers.find(
     u => u.name.toLowerCase() === username.trim().toLowerCase()
@@ -316,7 +329,7 @@ app.get('/api/leads', async (req, res) => {
     }
   }
   res.json(leadsDb);
-});
+}); 
 
 app.post('/api/leads', async (req, res) => {
   const newLead: Lead = {
