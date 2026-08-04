@@ -21,8 +21,17 @@ import AgentTerminal from './components/AgentTerminal';
 import CRMPipeline from './components/CRMPipeline';
 import LeadDetailsDrawer from './components/LeadDetailsDrawer';
 import CreateLeadModal from './components/CreateLeadModal';
+import AdminLogin from './components/AdminLogin';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: string; canDelete: boolean } | null>(() => {
+    const saved = localStorage.getItem('clartech_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return null;
+  });
+
   const [activeView, setActiveView] = useState<'pipeline' | 'agent' | 'insights'>('pipeline');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({
@@ -79,10 +88,9 @@ export default function App() {
       if (!res.ok) return;
       const data = await res.json();
       setAgentStatus(prevStatus => {
-        const keepActive = prevStatus.status === 'analyzing' && data.status === 'idle';
         return {
-          status: keepActive ? prevStatus.status : (data.status || prevStatus.status),
-          currentTask: keepActive ? prevStatus.currentTask : (data.currentTask || undefined),
+          status: data.status || prevStatus.status,
+          currentTask: data.currentTask || undefined,
           leadsDiscoveredCount: Math.max(data.leadsDiscoveredCount || 0, prevStatus.leadsDiscoveredCount || 0),
           leadsAnalyzedCount: Math.max(data.leadsAnalyzedCount || 0, prevStatus.leadsAnalyzedCount || 0),
           emailsDraftedCount: Math.max(data.emailsDraftedCount || 0, prevStatus.emailsDraftedCount || 0)
@@ -277,6 +285,10 @@ export default function App() {
   };
 
   const handleDeleteLead = async (id: string) => {
+    if (!currentUser || currentUser.name !== 'Adeyinka Meduoye') {
+      alert('Permission Denied: Only Adeyinka Meduoye can perform delete operations.');
+      return;
+    }
     if (window.confirm('Are you sure you want to remove this lead?')) {
       try {
         deletedLeadIdsRef.current.add(id);
@@ -327,6 +339,17 @@ export default function App() {
     return Object.entries(distribution).map(([name, count]) => ({ name, count }));
   };
 
+  if (!currentUser) {
+    return (
+      <AdminLogin
+        onLogin={(user) => {
+          setCurrentUser(user);
+          localStorage.setItem('clartech_user', JSON.stringify(user));
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#070a13] text-slate-100 flex flex-col font-sans select-none" id="app-container">
       {/* Upper Navigation Rail */}
@@ -350,35 +373,54 @@ export default function App() {
           </div>
         </div>
 
-        {/* View Toggle Pills */}
-        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 overflow-x-auto max-w-full shrink-0">
-          <button
-            onClick={() => setActiveView('pipeline')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
-              activeView === 'pipeline' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" /> <span className="hidden xs:inline sm:inline">Pipeline</span> CRM
-          </button>
-          <button
-            onClick={() => setActiveView('agent')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer relative whitespace-nowrap ${
-              activeView === 'agent' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5" /> Discovery Agent
-            {agentStatus.status !== 'idle' && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveView('insights')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
-              activeView === 'insights' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" /> ICP Insights
-          </button>
+        {/* View Toggle Pills & User Auth Badge */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 overflow-x-auto shrink-0">
+            <button
+              onClick={() => setActiveView('pipeline')}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
+                activeView === 'pipeline' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" /> <span className="hidden xs:inline sm:inline">Pipeline</span> CRM
+            </button>
+            <button
+              onClick={() => setActiveView('agent')}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer relative whitespace-nowrap ${
+                activeView === 'agent' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" /> Discovery Agent
+              {agentStatus.status !== 'idle' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveView('insights')}
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
+                activeView === 'insights' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" /> ICP Insights
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono">
+            <div className="text-right">
+              <div className="text-slate-200 font-bold">{currentUser.name}</div>
+              <div className="text-[9px] text-slate-500">{currentUser.canDelete ? 'Super Admin' : 'CRM Operator'}</div>
+            </div>
+            <button
+              onClick={() => {
+                setCurrentUser(null);
+                localStorage.removeItem('clartech_user');
+              }}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
+              title="Logout"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 

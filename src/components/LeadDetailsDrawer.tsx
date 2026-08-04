@@ -45,9 +45,18 @@ export default function LeadDetailsDrawer({
 }: LeadDetailsDrawerProps) {
   if (!lead) return null;
 
+  const SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech";
+  const getFormattedDraft = (draft?: string) => {
+    if (!draft) return `Hi there,${SIGNATURE}`;
+    if (!draft.includes('Adeyinka Meduoye')) {
+      return draft.trim() + SIGNATURE;
+    }
+    return draft;
+  };
+
   const [activeSubTab, setActiveSubTab] = useState<'report' | 'outreach' | 'crm'>('report');
   const [copied, setCopied] = useState(false);
-  const [emailText, setEmailText] = useState(lead.emailDraft || '');
+  const [emailText, setEmailText] = useState(getFormattedDraft(lead.emailDraft));
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [contactName, setContactName] = useState(lead.decisionMaker || '');
   const [contactTitle, setContactTitle] = useState(lead.jobTitle || '');
@@ -57,9 +66,10 @@ export default function LeadDetailsDrawer({
   const [customNotes, setCustomNotes] = useState('');
   const [gdprChecked, setGdprChecked] = useState(true);
   const [canSpamChecked, setCanSpamChecked] = useState(true);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   React.useEffect(() => {
-    setEmailText(lead.emailDraft || '');
+    setEmailText(getFormattedDraft(lead.emailDraft));
     setContactName(lead.decisionMaker || '');
     setContactTitle(lead.jobTitle || '');
     setContactEmail(lead.contactDetails.email || '');
@@ -88,13 +98,48 @@ export default function LeadDetailsDrawer({
     });
   };
 
-  const handleSimulateSend = () => {
+  const handleSendEmail = async () => {
+    if (!contactEmail) {
+      alert('Please verify or add a decision maker email address in the "CRM Coordinates" tab before sending outreach.');
+      return;
+    }
     handleSaveContactDetails();
-    onUpdateLeadStatus(lead.id, 'Contacted');
-    onUpdateLeadDetails(lead.id, {
-      followUpDate: new Date(Date.now() + 3 * 24 * 3600000).toISOString().split('T')[0] // auto-suggest follow up in 3 days
-    });
-    alert(`Personalized outreach email successfully sent to ${contactName} (${contactEmail})! Pipeline status updated to 'Contacted'. Follow-up scheduled.`);
+    setIsSendingEmail(true);
+    try {
+      let subject = `Strategic AI & Engineering Partnership with Clartech`;
+      let body = emailText;
+      if (emailText.startsWith('Subject:')) {
+        const parts = emailText.split('\n\n');
+        subject = parts[0].replace('Subject:', '').trim();
+        body = parts.slice(1).join('\n\n');
+      }
+
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientEmail: contactEmail,
+          recipientName: contactName,
+          companyName: lead.companyName,
+          subject,
+          body
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send email');
+
+      onUpdateLeadStatus(lead.id, 'Contacted');
+      onUpdateLeadDetails(lead.id, {
+        emailSent: true,
+        followUpDate: new Date(Date.now() + 3 * 24 * 3600000).toISOString().split('T')[0]
+      });
+      alert(`Outreach email successfully sent via Gmail SMTP (useclartech@gmail.com) to ${contactName} (${contactEmail})! Pipeline status updated to 'Contacted'.`);
+    } catch (err: any) {
+      console.error('Failed to send email:', err);
+      alert(`Error sending email: ${err.message || err}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const formatCurrency = (val?: number) => {
@@ -407,15 +452,24 @@ export default function LeadDetailsDrawer({
                     </div>
                   </div>
 
-                  {/* Simulate Send CTA */}
+                  {/* Send via Gmail SMTP CTA */}
                   <div className="pt-2">
                     <button
-                      onClick={handleSimulateSend}
-                      disabled={!contactEmail || !gdprChecked || !canSpamChecked}
-                      className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:cursor-not-allowed text-sm"
+                      onClick={handleSendEmail}
+                      disabled={isSendingEmail || !contactEmail || !gdprChecked || !canSpamChecked}
+                      className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:cursor-not-allowed text-sm shadow-lg shadow-brand-500/10"
                     >
-                      <Send className="w-4 h-4" />
-                      <span>Simulate Outreach Delivery</span>
+                      {isSendingEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Sending via Gmail SMTP (useclartech@gmail.com)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Send via Gmail SMTP (useclartech@gmail.com)</span>
+                        </>
+                      )}
                     </button>
                     {!contactEmail && (
                       <p className="text-[10px] text-rose-400 mt-2 text-center leading-relaxed">

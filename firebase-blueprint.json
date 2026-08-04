@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "B2B prospecting lead entity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "industry": { "type": "string" },
+        "website": { "type": "string" },
+        "status": { "type": "string" },
+        "matchScore": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "companyName", "status"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "B2B prospecting leads collection"
+    }
+  }
+}

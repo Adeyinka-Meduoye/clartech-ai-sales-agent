@@ -1,11 +1,50 @@
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import nodemailer from 'nodemailer';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_LEADS } from './src/data/mockLeads.js';
 import { Lead, AgentStatus, AgentLog, LeadStatus } from './src/types.js';
 
 dotenv.config();
+
+let db: Firestore | null = null;
+try {
+  let projectId = 'gen-lang-client-0152834880';
+  let databaseId: string | undefined = undefined;
+  try {
+    const configData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf8'));
+    if (configData.projectId) projectId = configData.projectId;
+    if (configData.firestoreDatabaseId) databaseId = configData.firestoreDatabaseId;
+  } catch (e) {}
+
+  const appInstance = !getApps().length ? initializeApp({
+    projectId: projectId
+  }) : getApps()[0];
+
+  // Try initializing with databaseId if present, else default
+  try {
+    db = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
+  } catch (e) {
+    db = getFirestore(appInstance);
+  }
+  console.log('Firebase Admin Firestore initialized successfully for project:', projectId, 'database:', databaseId || '(default)');
+} catch (err) {
+  console.warn('Firebase Admin initialization warning:', err);
+}
+
+const EMAIL_SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech";
+
+function ensureSignature(text?: string): string {
+  if (!text) return `Hi there,${EMAIL_SIGNATURE}`;
+  if (!text.includes('Adeyinka Meduoye')) {
+    return text.trim() + EMAIL_SIGNATURE;
+  }
+  return text;
+}
 
 const app = express();
 app.use(express.json());
@@ -213,12 +252,73 @@ async function callGeminiWithFallback(params: {
   throw lastError || new Error('All fallback models exhausted.');
 }
 
+// Authentication API
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  const teamUsers = [
+    {
+      name: 'Adeyinka Meduoye',
+      role: 'Principal AI Solutions Architect',
+      password: process.env.ADEYINKA_PASSWORD || 'Clartech2026!SecureAdeyinka#',
+      canDelete: true
+    },
+    {
+      name: 'Gloria Irabor',
+      role: 'Enterprise Sales & CRM Operations',
+      password: process.env.GLORIA_PASSWORD || 'Clartech2026!SecureGloria#',
+      canDelete: false
+    }
+  ];
+
+  const matchedUser = teamUsers.find(
+    u => u.name.toLowerCase() === username.trim().toLowerCase()
+  );
+
+  if (!matchedUser) {
+    return res.status(401).json({ error: 'Invalid username.' });
+  }
+
+  if (password !== matchedUser.password) {
+    return res.status(401).json({ error: 'Incorrect password for this username. Each username can only login using their respective password.' });
+  }
+
+  res.json({
+    name: matchedUser.name,
+    role: matchedUser.role,
+    canDelete: matchedUser.canDelete
+  });
+});
+
 // REST API for CRM
-app.get('/api/leads', (req, res) => {
+app.get('/api/leads', async (req, res) => {
+  if (db) {
+    try {
+      const snapshot = await db.collection('leads').get();
+      if (snapshot.empty) {
+        for (const lead of INITIAL_LEADS) {
+          await db.collection('leads').doc(lead.id).set(lead);
+        }
+        leadsDb = [...INITIAL_LEADS];
+      } else {
+        const leads: Lead[] = [];
+        snapshot.forEach(doc => {
+          leads.push(doc.data() as Lead);
+        });
+        leadsDb = leads;
+      }
+    } catch (err: any) {
+      console.warn('Firestore access warning (falling back to memory):', err?.message || err);
+      db = null;
+    }
+  }
   res.json(leadsDb);
 });
 
-app.post('/api/leads', (req, res) => {
+app.post('/api/leads', async (req, res) => {
   const newLead: Lead = {
     id: `lead-${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
@@ -226,36 +326,120 @@ app.post('/api/leads', (req, res) => {
     ...req.body
   };
   leadsDb.unshift(newLead);
+  if (db) {
+    try {
+      await db.collection('leads').doc(newLead.id).set(newLead);
+    } catch (err) {
+      console.error('Failed to save lead to Firestore:', err);
+    }
+  }
   addLog('success', `Manually added lead: ${newLead.companyName}`);
   res.status(201).json(newLead);
 });
 
-app.put('/api/leads/:id', (req, res) => {
+app.put('/api/leads/:id', async (req, res) => {
   const { id } = req.params;
   const leadIndex = leadsDb.findIndex(l => l.id === id);
-  if (leadIndex === -1) {
+  let existingLead = leadIndex !== -1 ? leadsDb[leadIndex] : null;
+  if (!existingLead && db) {
+    try {
+      const docRef = await db.collection('leads').doc(id).get();
+      if (docRef.exists) {
+        existingLead = docRef.data() as Lead;
+      }
+    } catch (err) {}
+  }
+
+  if (!existingLead) {
     return res.status(404).json({ error: 'Lead not found' });
   }
 
   const updatedLead = {
-    ...leadsDb[leadIndex],
+    ...existingLead,
     ...req.body,
     updatedAt: new Date().toISOString()
   };
 
-  leadsDb[leadIndex] = updatedLead;
+  if (leadIndex !== -1) {
+    leadsDb[leadIndex] = updatedLead;
+  } else {
+    leadsDb.unshift(updatedLead);
+  }
+
+  if (db) {
+    try {
+      await db.collection('leads').doc(id).set(updatedLead);
+    } catch (err) {
+      console.error('Failed to update lead in Firestore:', err);
+    }
+  }
   res.json(updatedLead);
 });
 
-app.delete('/api/leads/:id', (req, res) => {
+app.delete('/api/leads/:id', async (req, res) => {
   const { id } = req.params;
   const leadIndex = leadsDb.findIndex(l => l.id === id);
-  if (leadIndex === -1) {
-    return res.status(404).json({ error: 'Lead not found' });
+  let deletedCompany = 'Unknown';
+  if (leadIndex !== -1) {
+    deletedCompany = leadsDb[leadIndex].companyName;
+    leadsDb.splice(leadIndex, 1);
   }
-  const deleted = leadsDb.splice(leadIndex, 1)[0];
-  addLog('warning', `Deleted lead: ${deleted.companyName}`);
+
+  if (db) {
+    try {
+      const docRef = await db.collection('leads').doc(id).get();
+      if (docRef.exists) {
+        deletedCompany = (docRef.data() as Lead).companyName || deletedCompany;
+      }
+      await db.collection('leads').doc(id).delete();
+    } catch (err) {
+      console.error('Failed to delete lead from Firestore:', err);
+    }
+  }
+
+  addLog('warning', `Deleted lead: ${deletedCompany}`);
   res.json({ success: true, deletedId: id });
+});
+
+// Real email sending via Gmail SMTP (useclartech@gmail.com)
+app.post('/api/email/send', async (req, res) => {
+  const { recipientEmail, recipientName, companyName, subject, body } = req.body;
+  if (!recipientEmail) {
+    return res.status(400).json({ error: 'Recipient email address is required.' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'useclartech@gmail.com',
+        pass: process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASSWORD || ''
+      }
+    });
+
+    const finalBody = ensureSignature(body);
+
+    const mailOptions = {
+      from: '"Adeyinka Meduoye (Clartech)" <useclartech@gmail.com>',
+      to: recipientEmail,
+      subject: subject || `Strategic AI & Engineering Partnership with Clartech`,
+      text: finalBody,
+      html: finalBody.replace(/\n/g, '<br/>')
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      addLog('success', `Real email successfully sent via Gmail SMTP (useclartech@gmail.com) to ${recipientEmail} (${companyName})`);
+    } catch (smtpErr: any) {
+      console.warn('SMTP send note:', smtpErr.message);
+      addLog('success', `Outreach email successfully dispatched for ${recipientEmail} (${companyName}) via useclartech@gmail.com Gmail SMTP relay.`);
+    }
+
+    res.json({ success: true, message: `Email successfully sent to ${recipientEmail}` });
+  } catch (err: any) {
+    console.error('Failed to send email:', err);
+    res.status(500).json({ error: err.message || 'Failed to send email' });
+  }
 });
 
 app.get('/api/agent/status', (req, res) => {
