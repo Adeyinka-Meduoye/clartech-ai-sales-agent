@@ -873,7 +873,16 @@ Respond STRICTLY with a single JSON object matching this schema:
   })();
 });
 
-// Agent 5 — CRM & Pipeline Automation Agent endpoint
+// Agent 5 — CRM & Pipeline Automation Agent endpoint (GET & POST)
+app.get('/api/agent/crm-sync/:id', async (req, res) => {
+  const { id } = req.params;
+  const lead = leadsDb.find(l => l.id === id);
+  if (!lead) {
+    return res.status(404).json({ error: 'Lead not found' });
+  }
+  res.json({ success: true, lead, message: 'Lead CRM sync status retrieved successfully' });
+});
+
 app.post('/api/agent/crm-sync/:id', async (req, res) => {
   const { id } = req.params;
   const {
