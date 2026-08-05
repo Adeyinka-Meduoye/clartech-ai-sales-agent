@@ -62,7 +62,7 @@ try {
   console.error("Firebase initialization failed:", err);
 }
 
-const EMAIL_SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech";
+const EMAIL_SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech\nhttps://clartech.xyz/";
 
 function ensureSignature(text?: string): string {
   if (!text) return `Hi there,${EMAIL_SIGNATURE}`;
@@ -1177,7 +1177,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
             painPoints: ['Manual legacy workflow bottlenecks', 'Fragmented customer onboarding pipeline', 'Lack of real-time AI analytics'],
             opportunityScore: 92,
             recommendedServices: ['AI Workflow Automation', 'Predictive B2B Analytics', 'Custom Cloud Portal'],
-            emailDraft: `Hi Team,\n\nNoticed ${industry} Vertex Solutions is scaling rapidly in ${region}. At Clartech, we build high-performance AI architectures that eliminate operational bottlenecks.\n\nWould you be open to a 15-minute briefing on how we automated a 40% efficiency gain for similar industry leaders?\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech`,
+            emailDraft: `Hi Team,\n\nNoticed ${industry} Vertex Solutions is scaling rapidly in ${region}. At Clartech, we build high-performance AI architectures that eliminate operational bottlenecks.\n\nWould you be open to a 15-minute briefing on how we automated a 40% efficiency gain for similar industry leaders?\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech\nhttps://clartech.xyz/`,
             analysis: {
               executiveSummary: `${industry} Vertex Solutions is a high-growth enterprise expanding aggressively in ${region} with strong digital footprint.`,
               companyOverview: `Leading innovator in ${industry} providing tech-enabled services and products.`,
@@ -1204,7 +1204,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
             painPoints: ['High customer acquisition costs', 'Disconnected multi-region operations'],
             opportunityScore: 88,
             recommendedServices: ['Enterprise AI Agents', 'Scalable Cloud Architecture'],
-            emailDraft: `Hello,\n\nApex ${industry} Group has an impressive market presence in ${region}. We specialize in deploying autonomous AI agents that streamline enterprise operations.\n\nAre you available next Tuesday for a brief technical walkthrough?\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech`,
+            emailDraft: `Hello,\n\nApex ${industry} Group has an impressive market presence in ${region}. We specialize in deploying autonomous AI agents that streamline enterprise operations.\n\nAre you available next Tuesday for a brief technical walkthrough?\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech\nhttps://clartech.xyz/`,
             analysis: {
               executiveSummary: `Apex ${industry} Group is a well-established market player seeking modernization and AI-driven efficiencies.`,
               companyOverview: `Enterprise provider in the ${industry} sector focusing on regional expansion.`,
@@ -1231,7 +1231,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
             painPoints: ['Complex scaling challenges', 'Manual lead qualification overhead'],
             opportunityScore: 94,
             recommendedServices: ['Autonomous Lead Scoring AI', 'Custom CRM Pipeline'],
-            emailDraft: `Hi,\n\nNova ${industry} Labs is doing fantastic work in ${region}. We help companies like yours scale lead conversion using autonomous AI agents.\n\nLet's connect for a quick 10-minute chat.\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech`,
+            emailDraft: `Hi,\n\nNova ${industry} Labs is doing fantastic work in ${region}. We help companies like yours scale lead conversion using autonomous AI agents.\n\nLet's connect for a quick 10-minute chat.\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech\nhttps://clartech.xyz/`,
             analysis: {
               executiveSummary: `Nova ${industry} Labs is an agile, high-potential innovator looking to deploy cutting-edge AI tools.`,
               companyOverview: `B2B technology disruptor in ${industry}.`,

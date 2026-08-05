@@ -327,20 +327,25 @@ export default function App() {
     }
   };
 
+  const isSuperAdmin = currentUser?.name.toLowerCase() === 'adeyinka meduoye';
+  const visibleLeads = isSuperAdmin
+    ? leads
+    : leads.filter(l => l.assignedTo === currentUser?.name);
+
   // Analytics Helpers for ICP Insights Tab
   const getAverageScore = () => {
-    if (leads.length === 0) return 0;
-    const sum = leads.reduce((acc, lead) => acc + lead.opportunityScore, 0);
-    return Math.round(sum / leads.length);
+    if (visibleLeads.length === 0) return 0;
+    const sum = visibleLeads.reduce((acc, lead) => acc + lead.opportunityScore, 0);
+    return Math.round(sum / visibleLeads.length);
   };
 
   const getTotalProjectValue = () => {
-    return leads.reduce((acc, lead) => acc + (lead.analysis?.estimatedEngagementValue || 0), 0);
+    return visibleLeads.reduce((acc, lead) => acc + (lead.analysis?.estimatedEngagementValue || 0), 0);
   };
 
   const getIndustryDistribution = () => {
     const distribution: { [key: string]: number } = {};
-    leads.forEach((l) => {
+    visibleLeads.forEach((l) => {
       distribution[l.industry] = (distribution[l.industry] || 0) + 1;
     });
     return Object.entries(distribution).map(([name, count]) => ({ name, count }));
@@ -447,7 +452,7 @@ export default function App() {
                 </div>
               ) : (
                 <CRMPipeline
-                  leads={leads}
+                  leads={visibleLeads}
                   onSelectLead={setSelectedLead}
                   onUpdateLeadStatus={handleUpdateLeadStatus}
                   onDeleteLead={handleDeleteLead}
@@ -598,6 +603,7 @@ export default function App() {
         {selectedLead && (
           <LeadDetailsDrawer
             lead={selectedLead}
+            currentUser={currentUser}
             onClose={() => setSelectedLead(null)}
             onUpdateLeadStatus={handleUpdateLeadStatus}
             onUpdateLeadDetails={handleUpdateLeadDetails}

@@ -28,6 +28,7 @@ import { Lead, LeadStatus } from '../types';
 
 interface LeadDetailsDrawerProps {
   lead: Lead | null;
+  currentUser: { name: string; role: string; canDelete: boolean } | null;
   onClose: () => void;
   onUpdateLeadStatus: (id: string, status: LeadStatus) => void;
   onUpdateLeadDetails: (id: string, updatedFields: Partial<Lead>) => void;
@@ -37,6 +38,7 @@ interface LeadDetailsDrawerProps {
 
 export default function LeadDetailsDrawer({
   lead,
+  currentUser,
   onClose,
   onUpdateLeadStatus,
   onUpdateLeadDetails,
@@ -45,7 +47,7 @@ export default function LeadDetailsDrawer({
 }: LeadDetailsDrawerProps) {
   if (!lead) return null;
 
-  const SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech";
+  const SIGNATURE = "\n\nAdeyinka Meduoye,\nPrincipal AI Solutions Architect,\nClartech\nhttps://clartech.xyz/";
   const getFormattedDraft = (draft?: string) => {
     if (!draft) return `Hi there,${SIGNATURE}`;
     if (!draft.includes('Adeyinka Meduoye')) {
@@ -65,6 +67,7 @@ export default function LeadDetailsDrawer({
   const [contactPhone, setContactPhone] = useState(lead.contactDetails.phone || '');
   const [contactLinkedin, setContactLinkedin] = useState(lead.contactDetails.linkedin || '');
   const [customNotes, setCustomNotes] = useState('');
+  const [assignedAdmin, setAssignedAdmin] = useState(lead.assignedTo || '');
   const [gdprChecked, setGdprChecked] = useState(true);
   const [canSpamChecked, setCanSpamChecked] = useState(true);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -77,6 +80,7 @@ export default function LeadDetailsDrawer({
     setContactPhone(lead.contactDetails.phone || '');
     setContactLinkedin(lead.contactDetails.linkedin || '');
     setCustomNotes(lead.crmNotes || '');
+    setAssignedAdmin(lead.assignedTo || '');
   }, [lead]);
 
   const handleCopy = () => {
@@ -95,7 +99,8 @@ export default function LeadDetailsDrawer({
         linkedin: contactLinkedin
       },
       emailDraft: emailText,
-      crmNotes: customNotes
+      crmNotes: customNotes,
+      assignedTo: assignedAdmin || undefined
     });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
@@ -506,6 +511,29 @@ export default function LeadDetailsDrawer({
           {/* TAB 3: CRM COORDINATES */}
           {activeSubTab === 'crm' && (
             <div className="space-y-6 animate-fade-in" id="crm-coordinates-tab">
+              {currentUser?.name.toLowerCase() === 'adeyinka meduoye' && (
+                <div className="bg-brand-500/10 border border-brand-500/30 p-4 rounded-xl space-y-2">
+                  <label className="block text-[10px] uppercase font-mono text-brand-400 font-semibold flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Assign Lead to Admin (Super Admin Control)
+                  </label>
+                  <select
+                    value={assignedAdmin}
+                    onChange={(e) => {
+                      setAssignedAdmin(e.target.value);
+                      onUpdateLeadDetails(lead.id, { assignedTo: e.target.value || undefined });
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-sans cursor-pointer"
+                  >
+                    <option value="">Unassigned (Super Admin Only)</option>
+                    <option value="Adeyinka Meduoye">Adeyinka Meduoye (Super Admin)</option>
+                    <option value="Gloria Irabor">Gloria Irabor (CRM Operator)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400">
+                    {assignedAdmin ? `Assigned to ${assignedAdmin}. Visible in their CRM view.` : 'Unassigned. Only visible to Super Admin.'}
+                  </p>
+                </div>
+              )}
+
               <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-5 space-y-4">
                 <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-2">
                   <User className="w-4 h-4 text-brand-500" />

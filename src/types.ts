@@ -55,6 +55,7 @@ export interface Lead {
   emailSentDate?: string;
   repliesReceived?: string[];
   crmNotes?: string;
+  assignedTo?: string;
   createdAt: string;
   updatedAt: string;
 }

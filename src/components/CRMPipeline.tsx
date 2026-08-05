@@ -224,7 +224,7 @@ export default function CRMPipeline({
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-100 truncate">{lead.companyName}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
                             <Building2 className="w-3 h-3 shrink-0" /> {lead.industry}
                           </span>
@@ -232,6 +232,14 @@ export default function CRMPipeline({
                           <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
                             <MapPin className="w-3 h-3 shrink-0" /> {lead.country}
                           </span>
+                          {lead.assignedTo && (
+                            <>
+                              <span className="text-slate-700 font-mono text-[10px]">•</span>
+                              <span className="inline-flex items-center gap-1 text-[9px] bg-brand-500/10 text-brand-300 px-1.5 py-px rounded border border-brand-500/20 font-mono">
+                                👤 {lead.assignedTo}
+                              </span>
+                            </>
+                          )}
                         </div>
                         {/* Agent 5 Outreach & Reply indicators */}
                         {(lead.emailSent || (lead.repliesReceived && lead.repliesReceived.length > 0)) && (
