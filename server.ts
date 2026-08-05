@@ -881,8 +881,8 @@ Respond STRICTLY with a single JSON object matching this schema:
       }
 
       // Update the lead record
-      const fullDraft = `Subject: ${draftResult.subject}\n\n${draftResult.body}`;
-      lead.emailDraft = ensureSignature(fullDraft);
+      lead.emailSubject = draftResult.subject;
+      lead.emailDraft = ensureSignature(draftResult.body);
       lead.status = 'Drafted';
       lead.updatedAt = new Date().toISOString();
       await saveLeadToFirestore(lead);
@@ -1265,6 +1265,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
           painPoints: item.painPoints || [],
           opportunityScore: item.opportunityScore || 80,
           recommendedServices: item.recommendedServices || [],
+          emailSubject: item.emailSubject || `AI workflow acceleration & custom architecture for ${item.companyName}`,
           emailDraft: ensureSignature(item.emailDraft || ''),
           linkedin: item.linkedin || '',
           facebook: item.facebook || '',

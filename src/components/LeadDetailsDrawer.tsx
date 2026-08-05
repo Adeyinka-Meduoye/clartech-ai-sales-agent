@@ -59,6 +59,7 @@ export default function LeadDetailsDrawer({
   const [activeSubTab, setActiveSubTab] = useState<'report' | 'outreach' | 'crm'>('report');
   const [copied, setCopied] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [emailSubject, setEmailSubject] = useState(lead.emailSubject || `AI workflow acceleration & custom architecture for ${lead.companyName}`);
   const [emailText, setEmailText] = useState(getFormattedDraft(lead.emailDraft));
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [contactName, setContactName] = useState(lead.decisionMaker || '');
@@ -73,6 +74,7 @@ export default function LeadDetailsDrawer({
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   React.useEffect(() => {
+    setEmailSubject(lead.emailSubject || `AI workflow acceleration & custom architecture for ${lead.companyName}`);
     setEmailText(getFormattedDraft(lead.emailDraft));
     setContactName(lead.decisionMaker || '');
     setContactTitle(lead.jobTitle || '');
@@ -84,7 +86,7 @@ export default function LeadDetailsDrawer({
   }, [lead]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(emailText);
+    navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailText}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -98,6 +100,7 @@ export default function LeadDetailsDrawer({
         phone: contactPhone,
         linkedin: contactLinkedin
       },
+      emailSubject,
       emailDraft: emailText,
       crmNotes: customNotes,
       assignedTo: assignedAdmin || undefined
@@ -106,7 +109,7 @@ export default function LeadDetailsDrawer({
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
-  const handleSendEmail = async () => {
+  const handleSendEmail = async (isFollowUp = false) => {
     if (!contactEmail) {
       alert('Please verify or add a decision maker email address in the "CRM Coordinates" tab before sending outreach.');
       return;
@@ -114,14 +117,6 @@ export default function LeadDetailsDrawer({
     handleSaveContactDetails();
     setIsSendingEmail(true);
     try {
-      let subject = `Strategic AI & Engineering Partnership with Clartech`;
-      let body = emailText;
-      if (emailText.startsWith('Subject:')) {
-        const parts = emailText.split('\n\n');
-        subject = parts[0].replace('Subject:', '').trim();
-        body = parts.slice(1).join('\n\n');
-      }
-
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,20 +125,21 @@ export default function LeadDetailsDrawer({
           recipientEmail: contactEmail,
           recipientName: contactName,
           companyName: lead.companyName,
-          subject,
-          body
+          subject: emailSubject,
+          body: emailText
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send email');
 
+      const nextFollowUp = new Date(Date.now() + 4 * 24 * 3600000).toISOString().split('T')[0];
       onUpdateLeadStatus(lead.id, 'Contacted');
       onUpdateLeadDetails(lead.id, {
         emailSent: true,
         status: 'Contacted',
-        followUpDate: new Date(Date.now() + 3 * 24 * 3600000).toISOString().split('T')[0]
+        followUpDate: nextFollowUp
       });
-      alert(`Outreach email successfully sent via Gmail SMTP (useclartech@gmail.com) to ${contactName} (${contactEmail})! Pipeline status updated to 'Contacted'.`);
+      alert(`${isFollowUp ? 'Follow-up email' : 'Outreach email'} successfully sent via Gmail SMTP (useclartech@gmail.com) to ${contactName} (${contactEmail})! Next follow-up scheduled for ${nextFollowUp}.`);
     } catch (err: any) {
       console.error('Failed to send email:', err);
       alert(`Error sending email: ${err.message || err}`);
@@ -419,6 +415,25 @@ export default function LeadDetailsDrawer({
                     </div>
                   </div>
 
+                  {/* Email Subject Field */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
+                      Email Subject Line (High Open-Rate Design)
+                    </label>
+                    {isEditingEmail ? (
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-medium focus:outline-none focus:border-brand-500"
+                      />
+                    ) : (
+                      <div className="text-sm font-semibold text-slate-100 bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-800 font-sans">
+                        {emailSubject}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Mail Body Editor / Reader */}
                   <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-inner">
                     {isEditingEmail ? (
@@ -497,6 +512,35 @@ export default function LeadDetailsDrawer({
                       <p className="text-[10px] text-rose-400 mt-2 text-center leading-relaxed">
                         * Please verify or add a decision maker email address in the 'CRM Coordinates' tab before sending outreach.
                       </p>
+                    )}
+                  </div>
+
+                  {/* Follow-Up Momentum & Cadence Card */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+                        <h4 className="text-xs font-bold uppercase font-mono text-slate-300 tracking-wider">Automated Follow-Up Cadence</h4>
+                      </div>
+                      <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 px-2 py-1 rounded text-slate-300">
+                        Due: {lead.followUpDate || 'Not scheduled'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      System automatically schedules follow-up momenta at Day 3 and Day 7 post-outreach to maximize conversion without manual tracking.
+                    </p>
+                    {lead.emailSent && (
+                      <button
+                        onClick={() => {
+                          setEmailSubject(`Following up on AI & workflow optimization for ${lead.companyName}`);
+                          setEmailText(`Hi ${contactName || 'there'},\n\nWanted to circle back on my previous note regarding eliminating manual bottlenecks at ${lead.companyName}.\n\nWe recently helped a similar ${lead.industry} leader automate their pipeline with a 40% efficiency gain.\n\nWould a 10-minute technical brief next week make sense?\n\nBest,\nAdeyinka Meduoye\nPrincipal AI Solutions Architect, Clartech\nhttps://clartech.xyz/`);
+                          handleSendEmail(true);
+                        }}
+                        className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium py-2.5 px-3 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-brand-400" />
+                        <span>Send Automated Follow-Up Email via Gmail SMTP</span>
+                      </button>
                     )}
                   </div>
                 </>

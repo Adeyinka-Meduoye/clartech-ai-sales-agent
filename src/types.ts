@@ -46,6 +46,7 @@ export interface Lead {
   opportunityScore: number; // 0-100
   recommendedServices: string[];
   emailDraft: string;
+  emailSubject?: string;
   linkedin?: string;
   facebook?: string;
   followUpDate: string; // YYYY-MM-DD
