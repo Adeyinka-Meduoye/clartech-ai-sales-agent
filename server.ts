@@ -49,6 +49,16 @@ function ensureSignature(text?: string): string {
   return text;
 }
 
+async function saveLeadToFirestore(lead: Lead) {
+  if (db) {
+    try {
+      await db.collection('leads').doc(lead.id).set(lead, { merge: true });
+    } catch (err: any) {
+      console.warn('Firestore write warning:', err?.message || err);
+    }
+  }
+}
+
 const app = express();
 app.use(express.json());
 
@@ -320,8 +330,7 @@ app.get('/api/leads', async (req, res) => {
         leadsDb = leads;
       }
     } catch (err: any) {
-      console.warn('Firestore access warning (falling back to memory):', err?.message || err);
-      db = null;
+      console.warn('Firestore access warning:', err?.message || err);
     }
   }
   res.json(leadsDb);
@@ -335,14 +344,7 @@ app.post('/api/leads', async (req, res) => {
     ...req.body
   };
   leadsDb.unshift(newLead);
-  if (db) {
-    try {
-      await db.collection('leads').doc(newLead.id).set(newLead);
-    } catch (err: any) {
-      console.warn('Firestore write warning (falling back to memory):', err?.message || err);
-      db = null;
-    }
-  }
+  await saveLeadToFirestore(newLead);
   addLog('success', `Manually added lead: ${newLead.companyName}`);
   res.status(201).json(newLead);
 });
@@ -359,7 +361,6 @@ app.put('/api/leads/:id', async (req, res) => {
       }
     } catch (err: any) {
       console.warn('Firestore read warning:', err?.message || err);
-      db = null;
     }
   }
 
@@ -379,14 +380,7 @@ app.put('/api/leads/:id', async (req, res) => {
     leadsDb.unshift(updatedLead);
   }
 
-  if (db) {
-    try {
-      await db.collection('leads').doc(id).set(updatedLead);
-    } catch (err: any) {
-      console.warn('Firestore update warning:', err?.message || err);
-      db = null;
-    }
-  }
+  await saveLeadToFirestore(updatedLead);
   res.json(updatedLead);
 });
 
@@ -408,7 +402,6 @@ app.delete('/api/leads/:id', async (req, res) => {
       await db.collection('leads').doc(id).delete();
     } catch (err: any) {
       console.warn('Firestore delete warning:', err?.message || err);
-      db = null;
     }
   }
 
@@ -611,6 +604,10 @@ Format the output strictly as a single JSON object with these properties:
 
       lead.status = 'Drafted';
       lead.updatedAt = new Date().toISOString();
+      if (lead.emailDraft) {
+        lead.emailDraft = ensureSignature(lead.emailDraft);
+      }
+      await saveLeadToFirestore(lead);
 
       
       agentStatus.leadsAnalyzedCount += 1;
@@ -724,6 +721,10 @@ Respond STRICTLY with a single JSON object (no markdown wrappers or other text) 
           .replace(/Dear [A-Za-z]+,/, `Dear ${fName},`)
           .replace(/Hi [A-Za-z]+,/, `Hi ${fName},`);
       }
+      if (lead.emailDraft) {
+        lead.emailDraft = ensureSignature(lead.emailDraft);
+      }
+      await saveLeadToFirestore(lead);
 
       addLog('success', `Decision Maker resolved! Identified ${lead.decisionMaker} (${lead.jobTitle}) at ${lead.companyName}.`);
       if (lead.contactDetails?.email) {
@@ -848,9 +849,10 @@ Respond STRICTLY with a single JSON object matching this schema:
 
       // Update the lead record
       const fullDraft = `Subject: ${draftResult.subject}\n\n${draftResult.body}`;
-      lead.emailDraft = fullDraft;
+      lead.emailDraft = ensureSignature(fullDraft);
       lead.status = 'Drafted';
       lead.updatedAt = new Date().toISOString();
+      await saveLeadToFirestore(lead);
 
 
       // Save additional signals on the lead's analysis object for reference
@@ -1003,6 +1005,7 @@ Output strictly as a JSON object with this schema:
       }
 
       lead.updatedAt = new Date().toISOString();
+      await saveLeadToFirestore(lead);
 
       addLog('success', `Agent 5 CRM Synchronizer: Successfully logged & saved lead data for ${lead.companyName}!`);
       addLog('success', `↳ Stored attributes: Company, Lead Score: ${lead.opportunityScore}%, Status: ${lead.status}, Sent: ${lead.emailSent ? 'Yes' : 'No'}, Follow-up: ${lead.followUpDate}`);
@@ -1220,7 +1223,7 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
           painPoints: item.painPoints || [],
           opportunityScore: item.opportunityScore || 80,
           recommendedServices: item.recommendedServices || [],
-          emailDraft: item.emailDraft || '',
+          emailDraft: ensureSignature(item.emailDraft || ''),
           linkedin: item.linkedin || '',
           facebook: item.facebook || '',
           followUpDate: new Date(Date.now() + 7 * 24 * 3600000).toISOString().split('T')[0],
@@ -1231,7 +1234,8 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
         };
         leadsDb.unshift(lead);
         agentStatus.leadsDiscoveredCount += 1;
-        addLog('success', `Found qualified prospect: ${lead.companyName} (${lead.opportunityScore}% ICP match). Research stored.`);
+        await saveLeadToFirestore(lead);
+        addLog('success', `Found qualified prospect: ${lead.companyName} (${lead.opportunityScore}% ICP match). Stored to CRM & Firestore.`);
       }
 
 
