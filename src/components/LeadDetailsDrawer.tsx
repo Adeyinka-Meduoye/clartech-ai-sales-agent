@@ -56,6 +56,7 @@ export default function LeadDetailsDrawer({
 
   const [activeSubTab, setActiveSubTab] = useState<'report' | 'outreach' | 'crm'>('report');
   const [copied, setCopied] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [emailText, setEmailText] = useState(getFormattedDraft(lead.emailDraft));
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [contactName, setContactName] = useState(lead.decisionMaker || '');
@@ -96,6 +97,8 @@ export default function LeadDetailsDrawer({
       emailDraft: emailText,
       crmNotes: customNotes
     });
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2500);
   };
 
   const handleSendEmail = async () => {
@@ -118,6 +121,7 @@ export default function LeadDetailsDrawer({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          leadId: lead.id,
           recipientEmail: contactEmail,
           recipientName: contactName,
           companyName: lead.companyName,
@@ -131,6 +135,7 @@ export default function LeadDetailsDrawer({
       onUpdateLeadStatus(lead.id, 'Contacted');
       onUpdateLeadDetails(lead.id, {
         emailSent: true,
+        status: 'Contacted',
         followUpDate: new Date(Date.now() + 3 * 24 * 3600000).toISOString().split('T')[0]
       });
       alert(`Outreach email successfully sent via Gmail SMTP (useclartech@gmail.com) to ${contactName} (${contactEmail})! Pipeline status updated to 'Contacted'.`);
@@ -192,31 +197,43 @@ export default function LeadDetailsDrawer({
           </button>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 shrink-0">
+        {/* Tab Controls - Stacks vertically on mobile, responsive */}
+        <div className="flex flex-col sm:flex-row border-b border-slate-800 bg-slate-950/40 shrink-0 p-2 sm:p-0 gap-1 sm:gap-0">
           <button
             onClick={() => setActiveSubTab('report')}
-            className={`flex-1 py-3.5 text-xs font-semibold tracking-wide border-b-2 font-mono transition cursor-pointer flex items-center justify-center gap-2 ${
-              activeSubTab === 'report' ? 'border-brand-500 text-brand-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+            className={`w-full sm:flex-1 py-3 px-4 text-xs font-semibold tracking-wide border-l-4 sm:border-l-0 sm:border-b-2 font-mono transition cursor-pointer flex items-center justify-between sm:justify-center gap-2 rounded-lg sm:rounded-none ${
+              activeSubTab === 'report' ? 'border-brand-500 text-brand-400 bg-brand-500/10 sm:bg-brand-500/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Sparkles className="w-4 h-4 shrink-0" /> Opportunity Report
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand-400 shrink-0" />
+              <span>Opportunity Report</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 sm:hidden text-slate-500" />
           </button>
           <button
             onClick={() => setActiveSubTab('outreach')}
-            className={`flex-1 py-3.5 text-xs font-semibold tracking-wide border-b-2 font-mono transition cursor-pointer flex items-center justify-center gap-2 ${
-              activeSubTab === 'outreach' ? 'border-brand-500 text-brand-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+            className={`w-full sm:flex-1 py-3 px-4 text-xs font-semibold tracking-wide border-l-4 sm:border-l-0 sm:border-b-2 font-mono transition cursor-pointer flex items-center justify-between sm:justify-center gap-2 rounded-lg sm:rounded-none ${
+              activeSubTab === 'outreach' ? 'border-brand-500 text-brand-400 bg-brand-500/10 sm:bg-brand-500/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Mail className="w-4 h-4 shrink-0" /> Outreach Draft
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>Outreach Draft</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 sm:hidden text-slate-500" />
           </button>
           <button
             onClick={() => setActiveSubTab('crm')}
-            className={`flex-1 py-3.5 text-xs font-semibold tracking-wide border-b-2 font-mono transition cursor-pointer flex items-center justify-center gap-2 ${
-              activeSubTab === 'crm' ? 'border-brand-500 text-brand-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+            className={`w-full sm:flex-1 py-3 px-4 text-xs font-semibold tracking-wide border-l-4 sm:border-l-0 sm:border-b-2 font-mono transition cursor-pointer flex items-center justify-between sm:justify-center gap-2 rounded-lg sm:rounded-none ${
+              activeSubTab === 'crm' ? 'border-brand-500 text-brand-400 bg-brand-500/10 sm:bg-brand-500/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <FileText className="w-4 h-4 shrink-0" /> CRM Coordinates
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>CRM Coordinates</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 sm:hidden text-slate-500" />
           </button>
         </div>
 
@@ -575,9 +592,14 @@ export default function LeadDetailsDrawer({
                 <div className="pt-3 flex justify-end">
                   <button
                     onClick={handleSaveContactDetails}
-                    className="bg-brand-500 hover:bg-brand-600 text-white font-medium text-xs px-4 py-2 rounded-lg transition cursor-pointer"
+                    className={`font-medium text-xs px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                      savedSuccess 
+                        ? 'bg-emerald-600 text-white' 
+                        : 'bg-brand-500 hover:bg-brand-600 text-white'
+                    }`}
                   >
-                    Save CRM Profile
+                    {savedSuccess ? <Check className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                    {savedSuccess ? 'Saved Successfully!' : 'Save CRM Profile'}
                   </button>
                 </div>
               </div>

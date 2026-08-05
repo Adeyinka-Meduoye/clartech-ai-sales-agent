@@ -411,7 +411,7 @@ app.delete('/api/leads/:id', async (req, res) => {
 
 // Real email sending via Gmail SMTP (useclartech@gmail.com)
 app.post('/api/email/send', async (req, res) => {
-  const { recipientEmail, recipientName, companyName, subject, body } = req.body;
+  const { leadId, recipientEmail, recipientName, companyName, subject, body } = req.body;
   if (!recipientEmail) {
     return res.status(400).json({ error: 'Recipient email address is required.' });
   }
@@ -441,6 +441,16 @@ app.post('/api/email/send', async (req, res) => {
     } catch (smtpErr: any) {
       console.warn('SMTP send note:', smtpErr.message);
       addLog('success', `Outreach email successfully dispatched for ${recipientEmail} (${companyName}) via useclartech@gmail.com Gmail SMTP relay.`);
+    }
+
+    if (leadId) {
+      const lead = leadsDb.find(l => l.id === leadId);
+      if (lead) {
+        lead.status = 'Contacted';
+        lead.emailSent = true;
+        lead.updatedAt = new Date().toISOString();
+        await saveLeadToFirestore(lead);
+      }
     }
 
     res.json({ success: true, message: `Email successfully sent to ${recipientEmail}` });
