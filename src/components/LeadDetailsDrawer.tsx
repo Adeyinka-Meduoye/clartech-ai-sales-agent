@@ -492,7 +492,7 @@ export default function LeadDetailsDrawer({
                   {/* Send via Gmail SMTP CTA */}
                   <div className="pt-2">
                     <button
-                      onClick={handleSendEmail}
+                      onClick={() => handleSendEmail(false)}
                       disabled={isSendingEmail || !contactEmail || !gdprChecked || !canSpamChecked}
                       className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:cursor-not-allowed text-sm shadow-lg shadow-brand-500/10"
                     >
