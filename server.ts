@@ -21,20 +21,43 @@ process.on('uncaughtException', (err) => {
 let db: Firestore | null = null;
 
 try {
+  let projectId = process.env.FIREBASE_PROJECT_ID;
+  let databaseId = process.env.FIREBASE_DATABASE_ID;
+
+  try {
+    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const rawConfig = fs.readFileSync(configPath, 'utf8');
+      const parsedConfig = JSON.parse(rawConfig);
+      if (!projectId && parsedConfig.projectId) {
+        projectId = parsedConfig.projectId;
+      }
+      if (!databaseId && parsedConfig.firestoreDatabaseId) {
+        databaseId = parsedConfig.firestoreDatabaseId;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   const app =
     getApps().length > 0
       ? getApps()[0]
-      : initializeApp({
+      : process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL
+      ? initializeApp({
           credential: cert({
-            projectId: process.env.FIREBASE_PROJECT_ID!,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+            projectId: projectId || process.env.FIREBASE_PROJECT_ID!,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
           }),
+        })
+      : initializeApp({
+          projectId: projectId || 'gen-lang-client-0152834880',
         });
 
-  db = getFirestore(app);
+  db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 
-  console.log("✅ Firebase Admin initialized");
+  console.log("✅ Firebase Admin initialized successfully", databaseId ? `with database: ${databaseId}` : '');
 } catch (err) {
   console.error("Firebase initialization failed:", err);
 }
