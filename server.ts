@@ -295,13 +295,13 @@ const teamUsers = [
   {
     name: 'Adeyinka Meduoye',
     role: 'Principal AI Solutions Architect',
-    password: process.env.ADEYINKA_PASSWORD || 'Clartech2026!SecureAdeyinka#',
+    password: process.env.ADEYINKA_PASSWORD || 'useclartech@12345',
     canDelete: true
   },
   {
     name: 'Gloria Irabor',
     role: 'Enterprise Sales & CRM Operations',
-    password: process.env.GLORIA_PASSWORD || 'Clartech2026!SecureGloria#',
+    password: process.env.GLORIA_PASSWORD || 'gloria@useclartech',
     canDelete: false
   }
 ];
