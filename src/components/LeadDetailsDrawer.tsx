@@ -57,6 +57,7 @@ export default function LeadDetailsDrawer({
   };
 
   const [activeSubTab, setActiveSubTab] = useState<'report' | 'outreach' | 'crm'>('report');
+  const [emailStage, setEmailStage] = useState<'initial' | 'fu_2' | 'fu_4' | 'fu_6' | 'fu_8'>('initial');
   const [copied, setCopied] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [emailSubject, setEmailSubject] = useState(lead.emailSubject || `AI workflow acceleration & custom architecture for ${lead.companyName}`);
@@ -73,9 +74,69 @@ export default function LeadDetailsDrawer({
   const [canSpamChecked, setCanSpamChecked] = useState(true);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+  const getTemplateForStage = (stage: 'initial' | 'fu_2' | 'fu_4' | 'fu_6' | 'fu_8') => {
+    const cName = contactName || lead.decisionMaker || 'there';
+    const ind = lead.industry || 'technology';
+    const country = lead.country || 'your region';
+    if (stage === 'initial') {
+      return {
+        subject: lead.emailSubject || `AI workflow acceleration & custom architecture for ${lead.companyName}`,
+        body: getFormattedDraft(lead.emailDraft)
+      };
+    } else if (stage === 'fu_2') {
+      return {
+        subject: lead.followUp2Subject || `Following up (Day 2): AI & workflow automation for ${lead.companyName}`,
+        body: lead.followUp2Body || getFormattedDraft(`Hi ${cName},\n\nWanted to quickly circle back on my initial note regarding eliminating manual workflow bottlenecks at ${lead.companyName}.\n\nWe recently helped a similar ${ind} leader automate their pipeline with a 40% efficiency gain in weeks.\n\nWould a brief 10-minute technical brief next week make sense?`)
+      };
+    } else if (stage === 'fu_4') {
+      return {
+        subject: lead.followUp4Subject || `Quick case study (Day 4): 40% efficiency gain in ${ind} / Clartech`,
+        body: lead.followUp4Body || getFormattedDraft(`Hi ${cName},\n\nI know things move fast at ${lead.companyName}. Thought you might appreciate seeing how we deployed autonomous AI agents to eliminate manual overhead for enterprise teams.\n\nHappy to share a 2-page executive brief if this is top of mind.`)
+      };
+    } else if (stage === 'fu_6') {
+      return {
+        subject: lead.followUp6Subject || `Engineering architecture briefing (Day 6) for ${lead.companyName}`,
+        body: lead.followUp6Body || getFormattedDraft(`Hi ${cName},\n\nChecking in one more time this quarter. If scaling ${ind} operations or deploying custom AI agents is on your roadmap for ${country}, let's connect.\n\nAre you open to a brief introductory chat next Tuesday?`)
+      };
+    } else {
+      return {
+        subject: lead.followUp8Subject || `Final check-in (Day 8) / Clartech AI Solutions`,
+        body: lead.followUp8Body || getFormattedDraft(`Hi ${cName},\n\nI'll assume timing isn't right right now for ${lead.companyName}. I'll leave our previous notes on file in case your engineering priorities shift later this quarter.\n\nWishing you continued success in ${country}!`)
+      };
+    }
+  };
+
+  const handleSwitchStage = (newStage: 'initial' | 'fu_2' | 'fu_4' | 'fu_6' | 'fu_8') => {
+    // Save current stage edits first
+    const updates: Partial<Lead> = {};
+    if (emailStage === 'initial') {
+      updates.emailSubject = emailSubject;
+      updates.emailDraft = emailText;
+    } else if (emailStage === 'fu_2') {
+      updates.followUp2Subject = emailSubject;
+      updates.followUp2Body = emailText;
+    } else if (emailStage === 'fu_4') {
+      updates.followUp4Subject = emailSubject;
+      updates.followUp4Body = emailText;
+    } else if (emailStage === 'fu_6') {
+      updates.followUp6Subject = emailSubject;
+      updates.followUp6Body = emailText;
+    } else if (emailStage === 'fu_8') {
+      updates.followUp8Subject = emailSubject;
+      updates.followUp8Body = emailText;
+    }
+    onUpdateLeadDetails(lead.id, updates);
+
+    setEmailStage(newStage);
+    const template = getTemplateForStage(newStage);
+    setEmailSubject(template.subject);
+    setEmailText(template.body);
+  };
+
   React.useEffect(() => {
-    setEmailSubject(lead.emailSubject || `AI workflow acceleration & custom architecture for ${lead.companyName}`);
-    setEmailText(getFormattedDraft(lead.emailDraft));
+    const template = getTemplateForStage(emailStage);
+    setEmailSubject(template.subject);
+    setEmailText(template.body);
     setContactName(lead.decisionMaker || '');
     setContactTitle(lead.jobTitle || '');
     setContactEmail(lead.contactDetails.email || '');
@@ -83,7 +144,7 @@ export default function LeadDetailsDrawer({
     setContactLinkedin(lead.contactDetails.linkedin || '');
     setCustomNotes(lead.crmNotes || '');
     setAssignedAdmin(lead.assignedTo || '');
-  }, [lead]);
+  }, [lead, emailStage]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailText}`);
@@ -92,7 +153,7 @@ export default function LeadDetailsDrawer({
   };
 
   const handleSaveContactDetails = () => {
-    onUpdateLeadDetails(lead.id, {
+    const stageUpdates: Partial<Lead> = {
       decisionMaker: contactName,
       jobTitle: contactTitle,
       contactDetails: {
@@ -100,11 +161,27 @@ export default function LeadDetailsDrawer({
         phone: contactPhone,
         linkedin: contactLinkedin
       },
-      emailSubject,
-      emailDraft: emailText,
       crmNotes: customNotes,
       assignedTo: assignedAdmin || undefined
-    });
+    };
+    if (emailStage === 'initial') {
+      stageUpdates.emailSubject = emailSubject;
+      stageUpdates.emailDraft = emailText;
+    } else if (emailStage === 'fu_2') {
+      stageUpdates.followUp2Subject = emailSubject;
+      stageUpdates.followUp2Body = emailText;
+    } else if (emailStage === 'fu_4') {
+      stageUpdates.followUp4Subject = emailSubject;
+      stageUpdates.followUp4Body = emailText;
+    } else if (emailStage === 'fu_6') {
+      stageUpdates.followUp6Subject = emailSubject;
+      stageUpdates.followUp6Body = emailText;
+    } else if (emailStage === 'fu_8') {
+      stageUpdates.followUp8Subject = emailSubject;
+      stageUpdates.followUp8Body = emailText;
+    }
+
+    onUpdateLeadDetails(lead.id, stageUpdates);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -132,14 +209,20 @@ export default function LeadDetailsDrawer({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send email');
 
-      const nextFollowUp = new Date(Date.now() + 4 * 24 * 3600000).toISOString().split('T')[0];
+      let daysToAdd = 2; // Day 2 after initial
+      if (emailStage === 'fu_2') daysToAdd = 4; // Day 4 after FU1
+      else if (emailStage === 'fu_4') daysToAdd = 6; // Day 6 after FU2
+      else if (emailStage === 'fu_6') daysToAdd = 8; // Day 8 after FU3
+      else if (emailStage === 'fu_8') daysToAdd = 10; // Completed cycle
+
+      const nextFollowUp = new Date(Date.now() + daysToAdd * 24 * 3600000).toISOString().split('T')[0];
       onUpdateLeadStatus(lead.id, 'Contacted');
       onUpdateLeadDetails(lead.id, {
         emailSent: true,
         status: 'Contacted',
         followUpDate: nextFollowUp
       });
-      alert(`${isFollowUp ? 'Follow-up email' : 'Outreach email'} successfully sent via Gmail SMTP (useclartech@gmail.com) to ${contactName} (${contactEmail})! Next follow-up scheduled for ${nextFollowUp}.`);
+      alert(`Email (${emailStage === 'initial' ? 'Initial Outreach (Day 0)' : emailStage.toUpperCase()}) successfully sent via Gmail SMTP to ${contactName} (${contactEmail})! Next follow-up momentum scheduled for ${nextFollowUp}.`);
     } catch (err: any) {
       console.error('Failed to send email:', err);
       alert(`Error sending email: ${err.message || err}`);
@@ -415,6 +498,45 @@ export default function LeadDetailsDrawer({
                     </div>
                   </div>
 
+                  {/* Cadence Stage Selector */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
+                      Outreach & Follow-Up Cadence (View & Edit Drafts)
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      <button
+                        onClick={() => handleSwitchStage('initial')}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'initial' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        Initial (Day 0)
+                      </button>
+                      <button
+                        onClick={() => handleSwitchStage('fu_2')}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_2' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        Follow-up 1 (Day 2)
+                      </button>
+                      <button
+                        onClick={() => handleSwitchStage('fu_4')}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_4' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        Follow-up 2 (Day 4)
+                      </button>
+                      <button
+                        onClick={() => handleSwitchStage('fu_6')}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_6' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        Follow-up 3 (Day 6)
+                      </button>
+                      <button
+                        onClick={() => handleSwitchStage('fu_8')}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_8' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        Follow-up 4 (Day 8)
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Email Subject Field */}
                   <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
                     <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
@@ -527,7 +649,7 @@ export default function LeadDetailsDrawer({
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      System automatically schedules follow-up momenta at Day 3 and Day 7 post-outreach to maximize conversion without manual tracking.
+                      System automatically schedules follow-up momenta at Day 2, Day 4, Day 6, and Day 8 post-outreach. Switch stages above to preview, edit, and send each follow-up draft.
                     </p>
                     {lead.emailSent && (
                       <button

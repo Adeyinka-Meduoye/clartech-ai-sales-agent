@@ -47,6 +47,14 @@ export interface Lead {
   recommendedServices: string[];
   emailDraft: string;
   emailSubject?: string;
+  followUp2Subject?: string;
+  followUp2Body?: string;
+  followUp4Subject?: string;
+  followUp4Body?: string;
+  followUp6Subject?: string;
+  followUp6Body?: string;
+  followUp8Subject?: string;
+  followUp8Body?: string;
   linkedin?: string;
   facebook?: string;
   followUpDate: string; // YYYY-MM-DD
