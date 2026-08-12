@@ -55,6 +55,7 @@ export interface Lead {
   followUp6Body?: string;
   followUp8Subject?: string;
   followUp8Body?: string;
+  sentStages?: { [stage: string]: string }; // Tracks sent date for each cadence stage
   linkedin?: string;
   facebook?: string;
   followUpDate: string; // YYYY-MM-DD

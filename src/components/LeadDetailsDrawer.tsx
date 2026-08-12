@@ -216,13 +216,20 @@ export default function LeadDetailsDrawer({
       else if (emailStage === 'fu_8') daysToAdd = 10; // Completed cycle
 
       const nextFollowUp = new Date(Date.now() + daysToAdd * 24 * 3600000).toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const updatedSentStages = {
+        ...(lead.sentStages || {}),
+        [emailStage]: todayStr
+      };
+
       onUpdateLeadStatus(lead.id, 'Contacted');
       onUpdateLeadDetails(lead.id, {
         emailSent: true,
         status: 'Contacted',
+        sentStages: updatedSentStages,
         followUpDate: nextFollowUp
       });
-      alert(`Email (${emailStage === 'initial' ? 'Initial Outreach (Day 0)' : emailStage.toUpperCase()}) successfully sent via Gmail SMTP to ${contactName} (${contactEmail})! Next follow-up momentum scheduled for ${nextFollowUp}.`);
+      alert(`Email (${emailStage === 'initial' ? 'Initial Outreach (Day 0)' : emailStage.toUpperCase()}) successfully sent via Gmail SMTP to ${contactName} (${contactEmail})! Stage tagged as sent (${todayStr}).`);
     } catch (err: any) {
       console.error('Failed to send email:', err);
       alert(`Error sending email: ${err.message || err}`);
@@ -506,36 +513,70 @@ export default function LeadDetailsDrawer({
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                       <button
                         onClick={() => handleSwitchStage('initial')}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'initial' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${emailStage === 'initial' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
                       >
-                        Initial (Day 0)
+                        <span>Initial (Day 0)</span>
+                        {lead.sentStages?.['initial'] && (
+                          <span className={`text-[9px] font-mono mt-0.5 px-1.5 py-0.5 rounded ${emailStage === 'initial' ? 'bg-brand-700 text-brand-100' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                            ✓ Sent ({lead.sentStages['initial']})
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={() => handleSwitchStage('fu_2')}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_2' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${emailStage === 'fu_2' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
                       >
-                        Follow-up 1 (Day 2)
+                        <span>Follow-up 1 (Day 2)</span>
+                        {lead.sentStages?.['fu_2'] && (
+                          <span className={`text-[9px] font-mono mt-0.5 px-1.5 py-0.5 rounded ${emailStage === 'fu_2' ? 'bg-brand-700 text-brand-100' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                            ✓ Sent ({lead.sentStages['fu_2']})
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={() => handleSwitchStage('fu_4')}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_4' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${emailStage === 'fu_4' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
                       >
-                        Follow-up 2 (Day 4)
+                        <span>Follow-up 2 (Day 4)</span>
+                        {lead.sentStages?.['fu_4'] && (
+                          <span className={`text-[9px] font-mono mt-0.5 px-1.5 py-0.5 rounded ${emailStage === 'fu_4' ? 'bg-brand-700 text-brand-100' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                            ✓ Sent ({lead.sentStages['fu_4']})
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={() => handleSwitchStage('fu_6')}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_6' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${emailStage === 'fu_6' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
                       >
-                        Follow-up 3 (Day 6)
+                        <span>Follow-up 3 (Day 6)</span>
+                        {lead.sentStages?.['fu_6'] && (
+                          <span className={`text-[9px] font-mono mt-0.5 px-1.5 py-0.5 rounded ${emailStage === 'fu_6' ? 'bg-brand-700 text-brand-100' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                            ✓ Sent ({lead.sentStages['fu_6']})
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={() => handleSwitchStage('fu_8')}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center ${emailStage === 'fu_8' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-center flex flex-col items-center justify-center ${emailStage === 'fu_8' ? 'bg-brand-500 text-white shadow font-semibold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
                       >
-                        Follow-up 4 (Day 8)
+                        <span>Follow-up 4 (Day 8)</span>
+                        {lead.sentStages?.['fu_8'] && (
+                          <span className={`text-[9px] font-mono mt-0.5 px-1.5 py-0.5 rounded ${emailStage === 'fu_8' ? 'bg-brand-700 text-brand-100' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                            ✓ Sent ({lead.sentStages['fu_8']})
+                          </span>
+                        )}
                       </button>
                     </div>
                   </div>
+
+                  {lead.sentStages?.[emailStage] && (
+                    <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 flex items-center gap-2.5 text-xs text-amber-300">
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>
+                        <strong>Outreach Notice:</strong> You already sent this stage ({emailStage.toUpperCase()}) to {lead.companyName} on <strong>{lead.sentStages[emailStage]}</strong>. Please review carefully to avoid duplicate outreach.
+                      </span>
+                    </div>
+                  )}
 
                   {/* Email Subject Field */}
                   <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
@@ -884,6 +925,19 @@ export default function LeadDetailsDrawer({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Mobile Sticky Back / Close Bar */}
+        <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-3 sm:hidden flex items-center justify-between z-20 shadow-2xl shrink-0">
+          <div className="text-xs text-slate-400 truncate max-w-[200px]">
+            Viewing <span className="text-slate-200 font-semibold">{lead.companyName}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-100 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-slate-700 cursor-pointer shrink-0"
+          >
+            <X className="w-4 h-4" /> Close & Back
+          </button>
         </div>
       </div>
     </div>
