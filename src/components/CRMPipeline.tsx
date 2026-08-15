@@ -33,8 +33,28 @@ interface CRMPipelineProps {
   isAnalysingId?: string;
 }
 
-const COUNTRIES = ['All Regions', 'United States', 'Canada', 'United Kingdom', 'Germany', 'Netherlands', 'Ireland', 'France', 'Sweden'];
-const INDUSTRIES = ['All Industries', 'SaaS', 'Professional Services', 'Healthcare', 'Financial Services', 'Manufacturing', 'Logistics', 'Education', 'Churches', 'Nonprofits'];
+const COUNTRIES = [
+  'All Regions', 
+  'USA', 'Canada', 'Mexico', 
+  'United Kingdom', 'Germany', 'France', 'Netherlands', 'Ireland', 
+  'Italy', 'Spain', 'Switzerland', 'Sweden', 'Norway', 
+  'Denmark', 'Belgium', 'Austria', 'Poland', 'Portugal'
+];
+
+const INDUSTRIES = [
+  'All Industries', 
+  'SaaS', 
+  'Healthcare', 
+  'Finance', 
+  'Education', 
+  'ECommerce', 
+  'Consulting', 
+  'Churches', 
+  'Nonprofits', 
+  'Climate', 
+  'Energy', 
+  'All other industries'
+];
 
 export default function CRMPipeline({
   leads,

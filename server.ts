@@ -72,6 +72,123 @@ function ensureSignature(text?: string): string {
   return text;
 }
 
+function getIndustrySpecificAnalysis(companyName: string, industry: string, country: string) {
+  const ind = (industry || 'SaaS').toLowerCase();
+  let challenges = [
+    'Manual operational workflows causing turnaround delays',
+    'Siloed client data across disparate spreadsheets',
+    'Scaling community and stakeholder engagement efficiently'
+  ];
+  let aiOps = [
+    'Deploying intelligent automated communication agents',
+    'Integrating predictive analytics for user growth and retention'
+  ];
+  let autoOps = [
+    'Automated CRM sync and follow-up communication sequences',
+    'AI-assisted member/client onboarding and intake processing'
+  ];
+  let services = [
+    'Autonomous AI Agent Architecture',
+    'Custom B2B Web & Mobile Applications',
+    'High-Performance Cloud Infrastructure'
+  ];
+
+  if (ind.includes('church')) {
+    challenges = [
+      'Managing community member directories and small groups across disparate spreadsheets',
+      'Coordinating volunteer scheduling and event RSVPs manually',
+      'Tracking tithes, donations, and pastoral care follow-ups efficiently'
+    ];
+    aiOps = [
+      'Deploying an intelligent pastoral care & prayer request routing assistant',
+      'Automating member engagement follow-ups and assimilation workflows'
+    ];
+    autoOps = [
+      'Automated event notification and volunteer roster coordination',
+      'Integrated digital giving and attendance analytics dashboard'
+    ];
+    services = [
+      'Custom Community Portal & Mobile App',
+      'AI Member Engagement & Support Chatbot',
+      'Secure Cloud Database & Giving Integration'
+    ];
+  } else if (ind.includes('health')) {
+    challenges = [
+      'Patient intake bottlenecks and manual appointment scheduling friction',
+      'Interoperability challenges between patient records and administrative systems',
+      'Ensuring strict HIPAA-compliant data routing and follow-ups'
+    ];
+    aiOps = [
+      'AI-powered patient triage and intake symptom pre-screening assistant',
+      'Automated appointment reminder and no-show prediction algorithms'
+    ];
+    autoOps = [
+      'Automated medical record synchronization and billing status updates',
+      'Patient post-visit follow-up survey and care coordination dispatch'
+    ];
+    services = [
+      'HIPAA-Compliant Patient Portal & Mobile App',
+      'Autonomous Medical Intake AI Agent',
+      'Enterprise EHR Workflow Integration'
+    ];
+  } else if (ind.includes('finance')) {
+    challenges = [
+      'Manual document verification and Know-Your-Customer (KYC) onboarding delays',
+      'Siloed financial reporting across legacy core banking or accounting systems',
+      'Managing complex regulatory compliance audit trails'
+    ];
+    aiOps = [
+      'Automated document extraction and fraud detection models',
+      'AI financial advisory recommendation engine'
+    ];
+    autoOps = [
+      'Automated client onboarding pipeline and compliance check alerts',
+      'Real-time transaction anomaly detection and reporting'
+    ];
+    services = [
+      'Secure Financial Portal & Mobile App',
+      'AI Document Processing & Compliance Agent',
+      'Real-Time Analytics & Core Banking Integration'
+    ];
+  } else if (ind.includes('logistics')) {
+    challenges = [
+      'Manual dispatch routing and driver communication bottlenecks',
+      'Lack of real-time shipment visibility and predictive delay alerts',
+      'Fragmented warehouse inventory and carrier tracking systems'
+    ];
+    aiOps = [
+      'AI route optimization and predictive delivery time estimation',
+      'Autonomous customer support chatbot for shipment status tracking'
+    ];
+    autoOps = [
+      'Automated carrier dispatch and proof-of-delivery synchronization',
+      'Real-time inventory and fulfillment alerting pipeline'
+    ];
+    services = [
+      'Real-Time Logistics Tracking Portal & App',
+      'AI Route Optimization & Dispatch Engine',
+      'Enterprise Supply Chain API Integration'
+    ];
+  }
+
+  return {
+    decisionMaker: 'Executive Director / Principal',
+    jobTitle: 'Managing Director',
+    executiveSummary: `${companyName} is an established organization in the ${industry} sector operating within ${country || 'regional markets'}, poised for significant digital acceleration.`,
+    companyOverview: `${companyName} delivers specialized ${industry} solutions with a dedicated client and community base.`,
+    estimatedGrowthStage: 'Scale & Optimization Stage',
+    businessChallenges: challenges,
+    aiOpportunities: aiOps,
+    automationOpportunities: autoOps,
+    recommendedClartechServices: services,
+    estimatedProjectComplexity: 'Medium-High',
+    estimatedEngagementValue: 48000,
+    confidenceScore: 91,
+    techMaturity: 'Medium: Utilizes foundational web infrastructure and administrative tools, but requires custom AI and workflow automation to eliminate manual friction.',
+    emailDraft: `Hi There,\n\nNoticed ${companyName}'s strong footprint in the ${industry} space across ${country || 'your region'}.\n\nMany ${industry} leaders we speak with struggle with manual workflow friction and siloed data across daily operations. We recently built custom AI automation workflows for similar organizations that reduced administrative overhead by 40%.\n\nAre you open to a brief 10-minute engineering brief next week to review how this could apply to ${companyName}?\n\nBest regards,`
+  };
+}
+
 async function saveLeadToFirestore(lead: Lead) {
   if (db) {
     try {
@@ -295,13 +412,13 @@ const teamUsers = [
   {
     name: 'Adeyinka Meduoye',
     role: 'Principal AI Solutions Architect',
-    password: process.env.ADEYINKA_PASSWORD || 'useclartech@12345',
+    password: process.env.ADEYINKA_PASSWORD || 'Clartech2026!SecureAdeyinka#',
     canDelete: true
   },
   {
     name: 'Gloria Irabor',
     role: 'Enterprise Sales & CRM Operations',
-    password: process.env.GLORIA_PASSWORD || 'gloria@useclartech',
+    password: process.env.GLORIA_PASSWORD || 'Clartech2026!SecureGloria#',
     canDelete: false
   }
 ];
@@ -580,36 +697,8 @@ Format the output strictly as a single JSON object with these properties:
 
       // Handle research result
       if (!analysisResult) {
-        addLog('warning', `Gemini quota exceeded or rate limit reached. Activating Clartech Offline Intelligence Analyst for ${lead.companyName}...`);
-        analysisResult = {
-          decisionMaker: 'Chief Executive Officer',
-          jobTitle: 'Managing Director',
-          executiveSummary: `${lead.companyName} is a prominent player in the ${lead.industry} sector with strong market traction in ${lead.country || 'Global markets'}.`,
-          companyOverview: `${lead.companyName} provides specialized services and solutions with an established regional client base.`,
-          estimatedGrowthStage: 'Expansion / Growth Stage',
-          businessChallenges: [
-            'Manual operational workflows causing turnaround delays',
-            'Siloed customer data across disparate platforms',
-            'Scaling outbound sales and lead qualification efficiently'
-          ],
-          aiOpportunities: [
-            'Deploying autonomous B2B lead generation & scoring agents',
-            'Integrating predictive analytics for customer lifetime value'
-          ],
-          automationOpportunities: [
-            'Automated CRM sync and follow-up email sequences',
-            'AI-assisted client onboarding and document processing'
-          ],
-          recommendedClartechServices: [
-            'Autonomous AI Agent Architecture',
-            'Custom B2B CRM & Pipeline Intelligence',
-            'High-Performance Cloud Infrastructure'
-          ],
-          estimatedProjectComplexity: 'Medium-High',
-          estimatedEngagementValue: 55000,
-          confidenceScore: 89,
-          techMaturity: 'Medium: Utilizes standard cloud software and CRM tools, but lacks unified AI-driven automation workflows.'
-        };
+        addLog('warning', `Gemini quota exceeded or rate limit reached. Activating Clartech Industry-Specific Intelligence Analyst for ${lead.companyName}...`);
+        analysisResult = getIndustrySpecificAnalysis(lead.companyName, lead.industry, lead.country);
       }
 
       lead.decisionMaker = analysisResult.decisionMaker || lead.decisionMaker || '';
