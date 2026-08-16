@@ -133,10 +133,17 @@ export default function LeadDetailsDrawer({
     setEmailText(template.body);
   };
 
+  const prevLeadIdRef = React.useRef(lead.id);
+  const prevEmailStageRef = React.useRef(emailStage);
+
   React.useEffect(() => {
-    const template = getTemplateForStage(emailStage);
-    setEmailSubject(template.subject);
-    setEmailText(template.body);
+    if (lead.id !== prevLeadIdRef.current || emailStage !== prevEmailStageRef.current) {
+      prevLeadIdRef.current = lead.id;
+      prevEmailStageRef.current = emailStage;
+      const template = getTemplateForStage(emailStage);
+      setEmailSubject(template.subject);
+      setEmailText(template.body);
+    }
     setContactName(lead.decisionMaker || '');
     setContactTitle(lead.jobTitle || '');
     setContactEmail(lead.contactDetails.email || '');
@@ -144,7 +151,7 @@ export default function LeadDetailsDrawer({
     setContactLinkedin(lead.contactDetails.linkedin || '');
     setCustomNotes(lead.crmNotes || '');
     setAssignedAdmin(lead.assignedTo || '');
-  }, [lead, emailStage]);
+  }, [lead.id, emailStage, lead.decisionMaker, lead.jobTitle, lead.contactDetails, lead.crmNotes, lead.assignedTo]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailText}`);
@@ -480,11 +487,16 @@ export default function LeadDetailsDrawer({
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setIsEditingEmail(!isEditingEmail)}
+                        onClick={() => {
+                          if (isEditingEmail) {
+                            handleSaveContactDetails();
+                          }
+                          setIsEditingEmail(!isEditingEmail);
+                        }}
                         className="text-xs bg-slate-950 border border-slate-800 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span>{isEditingEmail ? 'Done Editing' : 'Edit Draft'}</span>
+                        <span>{isEditingEmail ? 'Done Editing (Saved)' : 'Edit Draft'}</span>
                       </button>
                       <button
                         onClick={handleCopy}

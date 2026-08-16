@@ -188,7 +188,7 @@ export default function AgentTerminal({
       setCrmNotesText(currentSelectedLead.crmNotes || '');
       setCrmFollowUpDate(currentSelectedLead.followUpDate || '');
     }
-  }, [selectedLeadId, currentSelectedLead]);
+  }, [selectedLeadId]);
 
   // Dynamic calculation for Monthly Discovery Calls
   const bookedCallsCount = leads.filter(l => l.status === 'Call Scheduled' || l.status === 'Converted' || l.status === 'Engaged').length;
