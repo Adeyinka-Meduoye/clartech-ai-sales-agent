@@ -239,6 +239,7 @@ const PORT = 3000;
 
 // In-memory databases
 let leadsDb: Lead[] = [...INITIAL_LEADS];
+let leadsLoadedFromFirestore = false;
 let agentLogs: AgentLog[] = [
   {
     id: 'log-1',
@@ -454,7 +455,7 @@ app.post('/api/auth/login', (req, res) => {
 
 // REST API for CRM
 app.get('/api/leads', async (req, res) => {
-  if (db) {
+  if (db && !leadsLoadedFromFirestore) {
     try {
       const snapshot = await db.collection('leads').get();
       if (snapshot.empty) {
@@ -469,6 +470,7 @@ app.get('/api/leads', async (req, res) => {
         });
         leadsDb = leads;
       }
+      leadsLoadedFromFirestore = true;
     } catch (err: any) {
       console.warn('Firestore access warning:', err?.message || err);
     }

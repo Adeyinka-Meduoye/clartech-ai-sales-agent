@@ -33,7 +33,13 @@ export default function App() {
   });
 
   const [activeView, setActiveView] = useState<'pipeline' | 'agent' | 'insights'>('pipeline');
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<Lead[]>(() => {
+    const saved = localStorage.getItem('clartech_leads_cache');
+    if (saved) {
+      try { const parsed = JSON.parse(saved); if (Array.isArray(parsed) && parsed.length > 0) return parsed; } catch (e) {}
+    }
+    return [];
+  });
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({
     status: 'idle',
     currentTask: undefined,
@@ -129,7 +135,14 @@ export default function App() {
     }
   };
 
-  // Poll for data updates
+  // Persist leads cache to localStorage
+  useEffect(() => {
+    if (leads.length > 0) {
+      localStorage.setItem('clartech_leads_cache', JSON.stringify(leads));
+    }
+  }, [leads]);
+
+  // Poll for data updates (reduced to every 30 seconds to minimize read quota usage)
   useEffect(() => {
     fetchLeads();
     fetchAgentStatus();
@@ -139,7 +152,7 @@ export default function App() {
       fetchLeads();
       fetchAgentStatus();
       fetchAgentLogs();
-    }, 2500); // Poll every 2.5 seconds
+    }, 30000); // Poll every 30 seconds instead of 2.5 seconds
 
     return () => clearInterval(interval);
   }, []);
