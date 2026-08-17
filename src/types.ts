@@ -74,6 +74,7 @@ export interface Lead {
   crmNotes?: string;
   internalNotes?: InternalNote[];
   assignedTo?: string;
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -170,7 +170,9 @@ export default function App() {
           region: config.regions[0],
           minSize,
           maxSize,
-          role: config.decisionMakers[0]
+          role: config.decisionMakers[0],
+          currentUser: currentUser?.name,
+          currentUserCanDelete: currentUser?.canDelete
         })
       });
       fetchAgentStatus();
@@ -317,7 +319,11 @@ export default function App() {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(leadDetails)
+        body: JSON.stringify({
+          ...leadDetails,
+          currentUser: currentUser?.name,
+          currentUserCanDelete: currentUser?.canDelete
+        })
       });
       if (res.ok) {
         fetchLeads();
@@ -327,10 +333,15 @@ export default function App() {
     }
   };
 
-  const isSuperAdmin = currentUser?.name.toLowerCase() === 'adeyinka meduoye';
+  const isSuperAdmin = currentUser?.canDelete === true || currentUser?.name?.toLowerCase() === 'adeyinka meduoye';
   const visibleLeads = isSuperAdmin
     ? leads
-    : leads.filter(l => l.assignedTo === currentUser?.name);
+    : leads.filter(l => {
+        const curName = currentUser?.name?.toLowerCase();
+        const createdMatch = l.createdBy ? l.createdBy.toLowerCase() === curName : false;
+        const assignedMatch = l.assignedTo ? l.assignedTo.toLowerCase() === curName : false;
+        return createdMatch || assignedMatch;
+      });
 
   // Analytics Helpers for ICP Insights Tab
   const getAverageScore = () => {
@@ -478,7 +489,7 @@ export default function App() {
                 logs={agentLogs}
                 onTriggerDiscovery={handleTriggerDiscovery}
                 isLoading={agentStatus.status !== 'idle'}
-                leads={leads}
+                leads={visibleLeads}
                 onTriggerAnalysis={handleTriggerAnalysis}
                 onTriggerDecisionFinder={handleTriggerDecisionFinder}
                 onTriggerOutreachDraft={handleTriggerOutreachDraft}
@@ -507,7 +518,7 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mt-6">
                   <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-xl">
                     <div className="text-slate-500 text-[10px] font-mono uppercase tracking-wider">Total Filed Leads</div>
-                    <div className="text-2xl font-bold font-mono text-slate-200 mt-1">{leads.length}</div>
+                    <div className="text-2xl font-bold font-mono text-slate-200 mt-1">{visibleLeads.length}</div>
                     <div className="text-[10px] text-brand-400 mt-2 font-medium">REAL ENTITY DISCOVERY</div>
                   </div>
 
@@ -528,8 +539,8 @@ export default function App() {
                   <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-xl">
                     <div className="text-slate-500 text-[10px] font-mono uppercase tracking-wider">Contact rate</div>
                     <div className="text-2xl font-bold font-mono text-slate-200 mt-1">
-                      {leads.length > 0 
-                        ? Math.round((leads.filter(l => ['Contacted', 'Engaged'].includes(l.status)).length / leads.length) * 100) 
+                      {visibleLeads.length > 0 
+                        ? Math.round((visibleLeads.filter(l => ['Contacted', 'Engaged'].includes(l.status)).length / visibleLeads.length) * 100) 
                         : 0}%
                     </div>
                     <div className="text-[10px] text-rose-400 mt-2 font-medium">CONVERSION OUTBOUND</div>
@@ -543,7 +554,7 @@ export default function App() {
                     <h3 className="text-sm font-semibold text-slate-200 uppercase font-mono tracking-wider mb-4">Pipeline Sector Distribution</h3>
                     <div className="space-y-4">
                       {getIndustryDistribution().map((item) => {
-                        const ratio = Math.round((item.count / leads.length) * 100);
+                        const ratio = Math.round((item.count / visibleLeads.length) * 100);
                         return (
                           <div key={item.name} className="space-y-1.5">
                             <div className="flex justify-between text-xs font-medium text-slate-300">
@@ -559,7 +570,7 @@ export default function App() {
                           </div>
                         );
                       })}
-                      {leads.length === 0 && (
+                      {visibleLeads.length === 0 && (
                         <div className="text-center py-12 text-xs text-slate-500 font-mono">No sector distribution records.</div>
                       )}
                     </div>

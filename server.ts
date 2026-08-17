@@ -477,11 +477,18 @@ app.get('/api/leads', async (req, res) => {
 });
 
 app.post('/api/leads', async (req, res) => {
+  const { currentUser, currentUserCanDelete, ...leadData } = req.body;
+  const isSuperAdmin = currentUserCanDelete === true || currentUser?.toLowerCase() === 'adeyinka meduoye';
+  const assignedTo = isSuperAdmin ? (leadData.assignedTo || undefined) : (currentUser || undefined);
+  const createdBy = isSuperAdmin ? (leadData.createdBy || currentUser || 'Adeyinka Meduoye') : currentUser;
+
   const newLead: Lead = {
     id: `lead-${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    ...req.body
+    ...leadData,
+    assignedTo,
+    createdBy
   };
   leadsDb.unshift(newLead);
   await saveLeadToFirestore(newLead);
@@ -491,6 +498,9 @@ app.post('/api/leads', async (req, res) => {
 
 app.put('/api/leads/:id', async (req, res) => {
   const { id } = req.params;
+  const { currentUser, currentUserCanDelete, ...bodyData } = req.body;
+  const isSuperAdmin = currentUserCanDelete === true || currentUser?.toLowerCase() === 'adeyinka meduoye';
+
   const leadIndex = leadsDb.findIndex(l => l.id === id);
   let existingLead = leadIndex !== -1 ? leadsDb[leadIndex] : null;
   if (!existingLead && db) {
@@ -508,9 +518,25 @@ app.put('/api/leads/:id', async (req, res) => {
     return res.status(404).json({ error: 'Lead not found' });
   }
 
+  const isUserGenerated = existingLead.createdBy && existingLead.createdBy.toLowerCase() !== 'adeyinka meduoye';
+
+  let finalAssignedTo = existingLead.assignedTo;
+  if (isSuperAdmin) {
+    if (isUserGenerated) {
+      // Super admin cannot assign user-generated/discovered leads to another user
+      finalAssignedTo = existingLead.assignedTo;
+    } else {
+      finalAssignedTo = 'assignedTo' in bodyData ? bodyData.assignedTo : existingLead.assignedTo;
+    }
+  } else {
+    // Non-super-admin cannot change assignment
+    finalAssignedTo = existingLead.assignedTo;
+  }
+
   const updatedLead = {
     ...existingLead,
-    ...req.body,
+    ...bodyData,
+    assignedTo: finalAssignedTo,
     updatedAt: new Date().toISOString()
   };
 
@@ -1154,7 +1180,10 @@ Output strictly as a JSON object with this schema:
 
 // Autonomous lead discovery agent
 app.post('/api/agent/discover', (req, res) => {
-  const { industry, region, minSize, maxSize, role } = req.body;
+  const { industry, region, minSize, maxSize, role, currentUser, currentUserCanDelete } = req.body;
+  const isSuperAdmin = currentUserCanDelete === true || currentUser?.toLowerCase() === 'adeyinka meduoye';
+  const assignedTo = isSuperAdmin ? undefined : currentUser;
+  const createdBy = isSuperAdmin ? 'Adeyinka Meduoye' : currentUser;
 
   if (agentStatus.status !== 'idle') {
     return res.status(400).json({ error: 'Agent is already running a discovery task.' });
@@ -1360,6 +1389,8 @@ Output strictly as a JSON array of 3 company objects conforming to this schema (
           facebook: item.facebook || '',
           followUpDate: new Date(Date.now() + 7 * 24 * 3600000).toISOString().split('T')[0],
           status: 'Discovered',
+          assignedTo: assignedTo || undefined,
+          createdBy: createdBy || 'Adeyinka Meduoye',
           analysis: item.analysis,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
