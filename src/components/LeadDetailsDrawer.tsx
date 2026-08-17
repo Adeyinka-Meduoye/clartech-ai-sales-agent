@@ -24,7 +24,7 @@ import {
   Edit3,
   Loader2
 } from 'lucide-react';
-import { Lead, LeadStatus } from '../types';
+import { Lead, LeadStatus, InternalNote } from '../types';
 
 interface LeadDetailsDrawerProps {
   lead: Lead | null;
@@ -73,6 +73,34 @@ export default function LeadDetailsDrawer({
   const [gdprChecked, setGdprChecked] = useState(true);
   const [canSpamChecked, setCanSpamChecked] = useState(true);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const [internalNotesList, setInternalNotesList] = useState<InternalNote[]>(lead.internalNotes || []);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isNotePreview, setIsNotePreview] = useState(false);
+
+  const handleAddInternalNote = () => {
+    if (!newNoteContent.trim()) return;
+    const newNote: InternalNote = {
+      id: 'note_' + Math.random().toString(36).substring(2, 9),
+      author: currentUser?.name || 'Admin',
+      content: newNoteContent.trim(),
+      timestamp: new Date().toLocaleString()
+    };
+    const updated = [newNote, ...internalNotesList];
+    setInternalNotesList(updated);
+    setNewNoteContent('');
+    onUpdateLeadDetails(lead.id, { internalNotes: updated });
+  };
+
+  const handleDeleteInternalNote = (noteId: string) => {
+    const updated = internalNotesList.filter(n => n.id !== noteId);
+    setInternalNotesList(updated);
+    onUpdateLeadDetails(lead.id, { internalNotes: updated });
+  };
+
+  const insertFormatting = (prefix: string, suffix = '') => {
+    setNewNoteContent(prev => prev + `${prefix}note text${suffix}`);
+  };
 
   const getTemplateForStage = (stage: 'initial' | 'fu_2' | 'fu_4' | 'fu_6' | 'fu_8') => {
     const cName = contactName || lead.decisionMaker || 'there';
@@ -151,7 +179,8 @@ export default function LeadDetailsDrawer({
     setContactLinkedin(lead.contactDetails.linkedin || '');
     setCustomNotes(lead.crmNotes || '');
     setAssignedAdmin(lead.assignedTo || '');
-  }, [lead.id, emailStage, lead.decisionMaker, lead.jobTitle, lead.contactDetails, lead.crmNotes, lead.assignedTo]);
+    setInternalNotesList(lead.internalNotes || []);
+  }, [lead.id, emailStage, lead.decisionMaker, lead.jobTitle, lead.contactDetails, lead.crmNotes, lead.assignedTo, lead.internalNotes]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailText}`);
@@ -849,6 +878,135 @@ export default function LeadDetailsDrawer({
                     {savedSuccess ? 'Saved Successfully!' : 'Save CRM Profile'}
                   </button>
                 </div>
+              </div>
+
+              {/* Rich Text Internal Notes & Strategy Board */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand-400" />
+                    <h4 className="text-xs font-bold font-mono uppercase text-slate-300 tracking-wider">Rich Text Internal Notes & Strategy Journal</h4>
+                  </div>
+                  <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-400">
+                    {internalNotesList.length} {internalNotesList.length === 1 ? 'Note' : 'Notes'}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-t-lg">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('**', '**')}
+                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition cursor-pointer text-xs"
+                        title="Bold"
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('*', '*')}
+                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 italic transition cursor-pointer text-xs"
+                        title="Italic"
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('- ')}
+                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer text-xs"
+                        title="Bullet List"
+                      >
+                        • List
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('> ')}
+                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer text-xs"
+                        title="Callout Box"
+                      >
+                        “ Quote
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsNotePreview(false)}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${!isNotePreview ? 'bg-brand-500 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsNotePreview(true)}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${isNotePreview ? 'bg-brand-500 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+
+                  {!isNotePreview ? (
+                    <textarea
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      placeholder="Write internal team notes, qualification updates, call takeaways, or strategy details... (Supports Markdown / rich text formatting)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-b-lg px-3.5 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition h-32 resize-y leading-relaxed font-sans"
+                    />
+                  ) : (
+                    <div className="w-full bg-slate-950 border border-slate-800 rounded-b-lg px-3.5 py-3 text-sm text-slate-200 min-h-[128px] max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed font-sans border-t-0">
+                      {newNoteContent ? newNoteContent : <span className="text-slate-600 italic">Nothing to preview yet...</span>}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Logged as: <strong className="text-slate-300">{currentUser?.name || 'Admin'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddInternalNote}
+                      disabled={!newNoteContent.trim()}
+                      className="bg-brand-500 hover:bg-brand-600 disabled:bg-slate-800 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Save Note to Database</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes Feed */}
+                {internalNotesList.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-slate-800/80">
+                    <h5 className="text-xs font-semibold uppercase font-mono text-slate-400">Saved Team Notes & History</h5>
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                      {internalNotesList.map((note) => (
+                        <div key={note.id} className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-4 space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-mono border-b border-slate-800/60 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-brand-500/10 text-brand-300 px-2 py-0.5 rounded border border-brand-500/20 font-semibold">
+                                {note.author}
+                              </span>
+                              <span className="text-slate-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {note.timestamp}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteInternalNote(note.id)}
+                              className="text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                              title="Delete Note"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans">
+                            {note.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Agent 5 CRM logs & simulated replies */}

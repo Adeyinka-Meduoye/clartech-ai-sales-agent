@@ -16,6 +16,13 @@ export interface ContactDetails {
   facebook?: string;
 }
 
+export interface InternalNote {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: string;
+}
+
 export interface OpportunityAnalysis {
   executiveSummary: string;
   companyOverview: string;
@@ -65,6 +72,7 @@ export interface Lead {
   emailSentDate?: string;
   repliesReceived?: string[];
   crmNotes?: string;
+  internalNotes?: InternalNote[];
   assignedTo?: string;
   createdAt: string;
   updatedAt: string;
