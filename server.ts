@@ -239,7 +239,8 @@ const PORT = 3000;
 
 // In-memory databases
 let leadsDb: Lead[] = [...INITIAL_LEADS];
-let leadsLoadedFromFirestore = false;
+let lastLeadsFetchTime = 0;
+const LEADS_CACHE_TTL_MS = 15000; // 15 seconds TTL for multi-instance consistency
 let agentLogs: AgentLog[] = [
   {
     id: 'log-1',
@@ -455,7 +456,8 @@ app.post('/api/auth/login', (req, res) => {
 
 // REST API for CRM
 app.get('/api/leads', async (req, res) => {
-  if (db && !leadsLoadedFromFirestore) {
+  const now = Date.now();
+  if (db && (now - lastLeadsFetchTime > LEADS_CACHE_TTL_MS)) {
     try {
       const snapshot = await db.collection('leads').get();
       if (snapshot.empty) {
@@ -470,7 +472,7 @@ app.get('/api/leads', async (req, res) => {
         });
         leadsDb = leads;
       }
-      leadsLoadedFromFirestore = true;
+      lastLeadsFetchTime = Date.now();
     } catch (err: any) {
       console.warn('Firestore access warning:', err?.message || err);
     }
@@ -494,6 +496,7 @@ app.post('/api/leads', async (req, res) => {
   };
   leadsDb.unshift(newLead);
   await saveLeadToFirestore(newLead);
+  lastLeadsFetchTime = Date.now();
   addLog('success', `Manually added lead: ${newLead.companyName}`);
   res.status(201).json(newLead);
 });
@@ -544,6 +547,7 @@ app.put('/api/leads/:id', async (req, res) => {
   }
 
   await saveLeadToFirestore(updatedLead);
+  lastLeadsFetchTime = Date.now();
   res.json(updatedLead);
 });
 
@@ -568,6 +572,7 @@ app.delete('/api/leads/:id', async (req, res) => {
     }
   }
 
+  lastLeadsFetchTime = Date.now();
   addLog('warning', `Deleted lead: ${deletedCompany}`);
   res.json({ success: true, deletedId: id });
 });
