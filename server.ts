@@ -524,12 +524,7 @@ app.put('/api/leads/:id', async (req, res) => {
 
   let finalAssignedTo = existingLead.assignedTo;
   if (isSuperAdmin) {
-    if (isUserGenerated) {
-      // Super admin cannot assign user-generated/discovered leads to another user
-      finalAssignedTo = existingLead.assignedTo;
-    } else {
-      finalAssignedTo = 'assignedTo' in bodyData ? bodyData.assignedTo : existingLead.assignedTo;
-    }
+    finalAssignedTo = 'assignedTo' in bodyData ? bodyData.assignedTo : existingLead.assignedTo;
   } else {
     // Non-super-admin cannot change assignment
     finalAssignedTo = existingLead.assignedTo;
