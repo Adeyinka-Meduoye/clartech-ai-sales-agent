@@ -68,8 +68,17 @@ export default function CRMPipeline({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('All Regions');
   const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
+  const [selectedAdmin, setSelectedAdmin] = useState('All Admins');
   const [minScore, setMinScore] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<LeadStatus | 'All'>('All');
+
+  const adminOptions = React.useMemo(() => {
+    const adminsSet = new Set<string>(['All Admins', 'Adeyinka Meduoye', 'Gloria Irabor', 'Unassigned']);
+    leads.forEach(l => {
+      if (l.assignedTo) adminsSet.add(l.assignedTo);
+    });
+    return Array.from(adminsSet);
+  }, [leads]);
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch = lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -78,10 +87,12 @@ export default function CRMPipeline({
     
     const matchesCountry = selectedCountry === 'All Regions' || lead.country === selectedCountry;
     const matchesIndustry = selectedIndustry === 'All Industries' || lead.industry === selectedIndustry;
+    const matchesAdmin = selectedAdmin === 'All Admins' || 
+      (selectedAdmin === 'Unassigned' ? !lead.assignedTo : lead.assignedTo === selectedAdmin);
     const matchesScore = lead.opportunityScore >= minScore;
     const matchesStatus = activeTab === 'All' || lead.status === activeTab;
 
-    return matchesSearch && matchesCountry && matchesIndustry && matchesScore && matchesStatus;
+    return matchesSearch && matchesCountry && matchesIndustry && matchesAdmin && matchesScore && matchesStatus;
   });
 
   const getStatusBadge = (status: LeadStatus) => {
@@ -135,7 +146,7 @@ export default function CRMPipeline({
       </div>
 
       {/* Advanced Filters panel */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
           <input
@@ -167,6 +178,20 @@ export default function CRMPipeline({
           >
             {INDUSTRIES.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <select
+            value={selectedAdmin}
+            onChange={(e) => setSelectedAdmin(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-brand-500 transition"
+          >
+            {adminOptions.map((admin) => (
+              <option key={admin} value={admin}>
+                {admin === 'All Admins' ? 'All Admins' : admin === 'Unassigned' ? 'Unassigned (Super Admin Only)' : admin}
+              </option>
             ))}
           </select>
         </div>
