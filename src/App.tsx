@@ -281,7 +281,11 @@ export default function App() {
       const res = await fetch(`/api/leads/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ 
+          status,
+          currentUser: currentUser?.name,
+          currentUserCanDelete: currentUser?.canDelete
+        })
       });
       if (res.ok) {
         fetchLeads();
@@ -296,7 +300,11 @@ export default function App() {
       const res = await fetch(`/api/leads/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFields)
+        body: JSON.stringify({
+          ...updatedFields,
+          currentUser: currentUser?.name,
+          currentUserCanDelete: currentUser?.canDelete
+        })
       });
       if (res.ok) {
         fetchLeads();
