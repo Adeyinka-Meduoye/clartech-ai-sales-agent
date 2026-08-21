@@ -810,7 +810,7 @@ Identify:
 - Exact Title / Position
 - LinkedIn Profile URL for this specific person (must be a valid URL like https://www.linkedin.com/in/...)
 - Facebook Profile URL (individual public page if found, otherwise the company's verified Facebook page if the individual profile is not public, like https://www.facebook.com/...)
-- A corporate verified email or ethically and legally constructed email. Construct the email address using highly accurate domain naming conventions based on the company domain "${lead.website}" (e.g. j.doe@company.com, jane.doe@company.com, or jane@company.com).
+- CRITICAL EMAIL ACCURACY: Construct or locate a 100% deliverable, verified corporate email. Avoid guessed or invalid addresses that cause mail bounce-back errors ("Address not found"). Cross-reference official company domain naming conventions (e.g., firstname.lastname@company.com, first@company.com, or f.lastname@company.com) based on "${lead.website}".
 
 Respond STRICTLY with a single JSON object (no markdown wrappers or other text) matching this schema:
 {

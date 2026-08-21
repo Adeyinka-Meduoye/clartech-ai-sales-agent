@@ -22,7 +22,8 @@ import {
   MapPin,
   ExternalLink,
   Edit3,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Lead, LeadStatus, InternalNote } from '../types';
 
@@ -33,6 +34,7 @@ interface LeadDetailsDrawerProps {
   onUpdateLeadStatus: (id: string, status: LeadStatus) => void;
   onUpdateLeadDetails: (id: string, updatedFields: Partial<Lead>) => void;
   onTriggerAnalysis: (id: string) => void;
+  onTriggerDecisionFinder?: (id: string, role: string) => void;
   isAnalysing: boolean;
 }
 
@@ -43,6 +45,7 @@ export default function LeadDetailsDrawer({
   onUpdateLeadStatus,
   onUpdateLeadDetails,
   onTriggerAnalysis,
+  onTriggerDecisionFinder,
   isAnalysing
 }: LeadDetailsDrawerProps) {
   if (!lead) return null;
@@ -797,9 +800,20 @@ export default function LeadDetailsDrawer({
               )}
 
               <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-5 space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-2">
-                  <User className="w-4 h-4 text-brand-500" />
-                  <h4 className="text-xs font-bold font-mono uppercase text-slate-300 tracking-wider">Target Coordinator Details</h4>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-brand-500" />
+                    <h4 className="text-xs font-bold font-mono uppercase text-slate-300 tracking-wider">Target Coordinator Details</h4>
+                  </div>
+                  {onTriggerDecisionFinder && (
+                    <button
+                      onClick={() => onTriggerDecisionFinder(lead.id, lead.jobTitle || 'CEO')}
+                      className="text-[10px] font-mono bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/30 px-2 py-1 rounded flex items-center gap-1 transition cursor-pointer"
+                      title="Re-run Decision Finder Agent to resolve correct email address and fix bounce-back errors"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Re-run Finder (Fix Bounce)
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

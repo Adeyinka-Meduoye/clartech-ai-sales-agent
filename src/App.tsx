@@ -640,6 +640,7 @@ export default function App() {
             onUpdateLeadStatus={handleUpdateLeadStatus}
             onUpdateLeadDetails={handleUpdateLeadDetails}
             onTriggerAnalysis={handleTriggerAnalysis}
+            onTriggerDecisionFinder={handleTriggerDecisionFinder}
             isAnalysing={isAnalysingId === selectedLead.id}
           />
         )}
