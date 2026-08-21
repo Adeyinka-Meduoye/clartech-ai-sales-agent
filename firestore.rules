@@ -10,5 +10,8 @@ service cloud.firestore {
     match /state/{stateId} {
       allow read, write: if true;
     }
+    match /teamUsers/{userId} {
+      allow read, write: if true;
+    }
   }
 }

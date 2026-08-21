@@ -14,7 +14,9 @@ import {
   CheckCircle, 
   Mail,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  X
 } from 'lucide-react';
 import { Lead, AgentStatus, AgentLog, LeadStatus, ICPConfig } from './types';
 import AgentTerminal from './components/AgentTerminal';
@@ -22,6 +24,7 @@ import CRMPipeline from './components/CRMPipeline';
 import LeadDetailsDrawer from './components/LeadDetailsDrawer';
 import CreateLeadModal from './components/CreateLeadModal';
 import AdminLogin from './components/AdminLogin';
+import UserAccountsManagement from './components/UserAccountsManagement';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{ name: string; role: string; canDelete: boolean } | null>(() => {
@@ -32,7 +35,8 @@ export default function App() {
     return null;
   });
 
-  const [activeView, setActiveView] = useState<'pipeline' | 'agent' | 'insights'>('pipeline');
+  const [activeView, setActiveView] = useState<'pipeline' | 'agent' | 'insights' | 'users'>('pipeline');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>(() => {
     const saved = localStorage.getItem('clartech_leads_cache');
     if (saved) {
@@ -397,72 +401,153 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#070a13] text-slate-100 flex flex-col font-sans select-none" id="app-container">
       {/* Upper Navigation Rail */}
-      <header className="bg-slate-900/40 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <img 
-              src={clartechLogo} 
-              alt="Clartech Logo" 
-              className="w-10 h-10 rounded-xl object-cover border border-brand-500/30 shadow-lg shadow-brand-500/10"
-              referrerPolicy="no-referrer"
-            />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full" title="Agent Engine Online"></span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-bold text-slate-100 text-base tracking-tight leading-none">Clartech Growth Agent</h1>
-              <span className="text-[9px] bg-brand-500/15 text-brand-400 font-mono px-2 py-0.5 rounded border border-brand-500/20 font-bold uppercase">ENTERPRISE</span>
+      <header className="bg-slate-900/40 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <img 
+                src={clartechLogo} 
+                alt="Clartech Logo" 
+                className="w-10 h-10 rounded-xl object-cover border border-brand-500/30 shadow-lg shadow-brand-500/10"
+                referrerPolicy="no-referrer"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full" title="Agent Engine Online"></span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium">B2B Outbound Intel & Pipelines</p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-bold text-slate-100 text-sm sm:text-base tracking-tight leading-none">Clartech Growth Agent</h1>
+                <span className="text-[9px] bg-brand-500/15 text-brand-400 font-mono px-2 py-0.5 rounded border border-brand-500/20 font-bold uppercase hidden xs:inline-block">ENTERPRISE</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium hidden sm:block">B2B Outbound Intel & Pipelines</p>
+            </div>
           </div>
-        </div>
 
-        {/* View Toggle Pills & User Auth Badge */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 overflow-x-auto shrink-0">
-            <button
-              onClick={() => setActiveView('pipeline')}
-              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeView === 'pipeline' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" /> <span className="hidden xs:inline sm:inline">Pipeline</span> CRM
-            </button>
-            <button
-              onClick={() => setActiveView('agent')}
-              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer relative whitespace-nowrap ${
-                activeView === 'agent' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" /> Discovery Agent
-              {agentStatus.status !== 'idle' && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+          {/* Desktop Navigation Pills & User Auth Badge */}
+          <div className="hidden lg:flex items-center gap-3">
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 shrink-0">
+              <button
+                onClick={() => setActiveView('pipeline')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  activeView === 'pipeline' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" /> Pipeline CRM
+              </button>
+              <button
+                onClick={() => setActiveView('agent')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center gap-2 cursor-pointer relative whitespace-nowrap ${
+                  activeView === 'agent' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Terminal className="w-3.5 h-3.5" /> Discovery Agent
+                {agentStatus.status !== 'idle' && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveView('insights')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  activeView === 'insights' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" /> ICP Insights
+              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setActiveView('users')}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                    activeView === 'users' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" /> User Accounts
+                </button>
               )}
-            </button>
-            <button
-              onClick={() => setActiveView('insights')}
-              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold tracking-wide font-mono transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeView === 'insights' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" /> ICP Insights
-            </button>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono">
+              <div className="text-right">
+                <div className="text-slate-200 font-bold">{currentUser.name}</div>
+                <div className="text-[9px] text-slate-500">{currentUser.canDelete ? 'Super Admin' : 'CRM Operator'}</div>
+              </div>
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
+                title="Logout"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono">
-            <div className="text-right">
-              <div className="text-slate-200 font-bold">{currentUser.name}</div>
-              <div className="text-[9px] text-slate-500">{currentUser.canDelete ? 'Super Admin' : 'CRM Operator'}</div>
+          {/* Mobile / Tablet Hamburger Toggle */}
+          <div className="flex lg:hidden items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-xl text-xs font-mono">
+              <span className="text-slate-200 font-bold truncate max-w-[100px]">{currentUser.name}</span>
             </div>
             <button
-              onClick={() => setShowLogoutModal(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
-              title="Logout"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl transition cursor-pointer border border-slate-700"
+              aria-label="Toggle Navigation Menu"
             >
-              Logout
+              {mobileMenuOpen ? <X className="w-5 h-5 text-brand-400" /> : <Menu className="w-5 h-5 text-brand-400" />}
             </button>
           </div>
         </div>
+
+        {/* Collapsible Mobile / Tablet Hamburger Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-3 pt-3 border-t border-slate-800/80 space-y-2 animate-fade">
+            <div className="grid grid-cols-1 gap-1.5 font-mono text-xs">
+              <button
+                onClick={() => { setActiveView('pipeline'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                  activeView === 'pipeline' ? 'bg-brand-500 text-white font-bold' : 'bg-slate-950 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Layers className="w-4 h-4" /> Pipeline CRM
+              </button>
+              <button
+                onClick={() => { setActiveView('agent'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer relative ${
+                  activeView === 'agent' ? 'bg-brand-500 text-white font-bold' : 'bg-slate-950 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Terminal className="w-4 h-4" /> Discovery Agent
+                {agentStatus.status !== 'idle' && (
+                  <span className="absolute right-3 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></span>
+                )}
+              </button>
+              <button
+                onClick={() => { setActiveView('insights'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                  activeView === 'insights' ? 'bg-brand-500 text-white font-bold' : 'bg-slate-950 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" /> ICP Insights
+              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => { setActiveView('users'); setMobileMenuOpen(false); }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                    activeView === 'users' ? 'bg-brand-500 text-white font-bold' : 'bg-slate-950 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <Users className="w-4 h-4" /> User Accounts
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-900 px-1">
+              <span className="text-[11px] font-mono text-slate-400">Signed in as <strong className="text-slate-200">{currentUser.name}</strong> ({currentUser.canDelete ? 'Super Admin' : 'CRM Operator'})</span>
+              <button
+                onClick={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
+                className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-900/60 px-3 py-1.5 rounded-lg text-xs font-mono transition cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Container */}
@@ -625,6 +710,19 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {/* VIEW 4: USER ACCOUNTS MANAGEMENT (Super Admin Only) */}
+          {activeView === 'users' && isSuperAdmin && (
+            <motion.div
+              key="users"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              <UserAccountsManagement />
             </motion.div>
           )}
         </AnimatePresence>

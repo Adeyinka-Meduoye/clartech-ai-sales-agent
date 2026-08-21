@@ -15,12 +15,29 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "companyName", "status"]
+    },
+    "TeamUser": {
+      "title": "TeamUser",
+      "description": "System user account and RBAC privileges",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "password": { "type": "string" },
+        "canDelete": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "role", "canDelete"]
     }
   },
   "firestore": {
     "/leads/{leadId}": {
       "schema": "Lead",
       "description": "B2B prospecting leads collection"
+    },
+    "/teamUsers/{userId}": {
+      "schema": "TeamUser",
+      "description": "System user accounts collection"
     }
   }
 }
